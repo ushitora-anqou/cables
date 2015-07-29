@@ -1,50 +1,9 @@
-#include "cable.hpp"
+#include "socket.hpp"
 #include "helper.hpp"
 #include <iostream>
 
-class WhileOutUnit : public Unit
-{
-private:
-    std::unique_ptr<boost::thread> proc_;
-    bool hasFinished_;
-
-public:
-    WhileOutUnit()
-        : hasFinished_(false)
-    {}
-    virtual ~WhileOutUnit(){}
-
-    void startImpl();
-    void stopImpl();
-    virtual void construct(){}
-    virtual PCMWave update() = 0;
-    virtual void destruct(){}
-};
-
-void WhileOutUnit::startImpl()
-{
-    proc_ = make_unique<boost::thread>(
-        [this](){
-            construct();
-            while(!hasFinished_){
-                PCMWave wave(std::move(update()));
-                if(!hasFinished_)   send(wave);
-            }
-            destruct();
-        }
-    );
-}
-
-void WhileOutUnit::stopImpl()
-{
-    hasFinished_ = true;
-    proc_->join();
-}
-
-///
-
 #include <cmath>
-class SinOutUnit : public WhileOutUnit
+class SinOutUnit : public WaitThreadOutUnit
 {
 private:
     std::vector<double> sinTable_;
@@ -76,8 +35,6 @@ PCMWave SinOutUnit::update()
         p_ = (p_ + 1) % tbl.size();
     }
 
-    sleepMilli(80);
-
     return std::move(ret);
 }
 
@@ -105,14 +62,16 @@ int main(int argc, char **argv)
 {
     std::vector<UnitPtr> units = {
         makeUnit<SinOutUnit>(1000),
-        makeUnit<FileInUnit>("test.wav")
+        makeUnit<SinOutUnit>(1000),
+        makeUnit<FileInUnit>("test0.wav"),
+        makeUnit<FileInUnit>("test1.wav"),
+        makeUnit<FileInUnit>("test2.wav")
     };
-    std::vector<CablePtr> cables = {
-        connect({units.at(0)}, {units.at(1)})
-    };
+    connect({units.at(0)}, {units.at(2), units.at(4)});
+    connect({units.at(1)}, {units.at(3), units.at(4)});
 
     for(auto& unit : units) unit->start();
-    sleepMilli(5000);
+    sleepms(5000);
     for(auto& unit : units) unit->stop();
 
 
