@@ -12,12 +12,9 @@
 #include <memory>
 
 class Unit;
-class Socket;
 
 using UnitPtr = std::shared_ptr<Unit>;
 using UnitWeakPtr = std::weak_ptr<Unit>;
-using SocketPtr = std::shared_ptr<Socket>;
-using SocketWeakPtr = std::weak_ptr<Socket>;
 
 template<class T, class... Args>
 UnitPtr makeUnit(Args&&... args)
@@ -27,36 +24,44 @@ UnitPtr makeUnit(Args&&... args)
 void connect(const std::vector<UnitPtr>& from, const std::vector<UnitPtr>& to);
 
 
-class Socket
-{
-    friend void connect(const std::vector<UnitPtr>&, const std::vector<UnitPtr>&);
-
-public:
-    using UID = boost::uuids::uuid;
-
-private:
-    UID uid_;
-    std::map<UID, bool> fromFlags_;
-    std::vector<SocketWeakPtr> toSockets_;
-    PCMWave pool_;
-    boost::mutex mtx_;
-    Unit *parent_;
-
-public:
-    Socket(Unit *parent)
-        : uid_(boost::uuids::random_generator()()), parent_(parent)
-    {}
-    ~Socket(){}
-
-    const UID& getUID() const { return uid_; }
-
-    void write(const PCMWave& src);
-    void onRecv(const UID& uid, const PCMWave& src);
-};
-
 class Unit
 {
     friend void connect(const std::vector<UnitPtr>&, const std::vector<UnitPtr>&);
+
+private:
+    class Socket;
+    using SocketPtr = std::shared_ptr<Unit::Socket>;
+    using SocketWeakPtr = std::weak_ptr<Unit::Socket>;
+
+    class Socket
+    {
+        friend void connect(const std::vector<UnitPtr>&, const std::vector<UnitPtr>&);
+
+    public:
+        using UID = boost::uuids::uuid;
+
+    private:
+        UID uid_;
+        std::map<UID, bool> fromFlags_;
+        std::vector<SocketWeakPtr> toSockets_;
+        PCMWave pool_;
+        boost::mutex mtx_;
+        Unit *parent_;
+
+    private:
+        void emitPool();
+
+    public:
+        Socket(Unit *parent)
+            : uid_(boost::uuids::random_generator()()), parent_(parent)
+        {}
+        ~Socket(){}
+
+        const UID& getUID() const { return uid_; }
+
+        void write(const PCMWave& src);
+        void onRecv(const UID& uid, const PCMWave& src);
+    };
 
 private:
     bool isAlive_;

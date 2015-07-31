@@ -58,17 +58,45 @@ public:
     }
 };
 
+///
+
+class VolumeFilter : public Unit
+{
+private:
+    double rate_;
+
+public:
+    VolumeFilter(double rate)
+        : rate_(rate)
+    {}
+
+    void inputImpl(const PCMWave& wave)
+    {
+        PCMWave ret;
+        std::transform(
+            wave.begin(), wave.end(),
+            ret.begin(),
+            [this](const PCMWave::Sample& s) { return s * rate_; }
+        );
+        send(ret);
+    }
+};
+
 int main(int argc, char **argv)
 {
     std::vector<UnitPtr> units = {
         makeUnit<SinOutUnit>(1000),
-        makeUnit<SinOutUnit>(1000),
+        makeUnit<VolumeFilter>(0.5),
         makeUnit<FileInUnit>("test0.wav"),
+        makeUnit<SinOutUnit>(1000),
+        makeUnit<VolumeFilter>(0.5),
         makeUnit<FileInUnit>("test1.wav"),
         makeUnit<FileInUnit>("test2.wav")
     };
-    connect({units.at(0)}, {units.at(2), units.at(4)});
-    connect({units.at(1)}, {units.at(3), units.at(4)});
+    connect({units.at(0)}, {units.at(1)});
+    connect({units.at(1)}, {units.at(2), units.at(6)});
+    connect({units.at(3)}, {units.at(4)});
+    connect({units.at(4)}, {units.at(5), units.at(6)});
 
     for(auto& unit : units) unit->start();
     sleepms(5000);

@@ -16,29 +16,32 @@ void connect(const std::vector<UnitPtr>& from, const std::vector<UnitPtr>& to)
 
 ///
 
-void Socket::write(const PCMWave& src)
+void Unit::Socket::write(const PCMWave& src)
 {
     for(auto& s : toSockets_)   s.lock()->onRecv(uid_, src);
 }
 
-void Socket::onRecv(const UID& uid, const PCMWave& src)
+void Unit::Socket::onRecv(const UID& uid, const PCMWave& src)
 {
     boost::mutex::scoped_lock lock(mtx_);
 
-    bool isAllTrue = std::all_of(fromFlags_.begin(), fromFlags_.end(),
-        [](const std::pair<UID, bool>& item) { return item.second; });
-    auto it = fromFlags_.find(uid); assert(it != fromFlags_.end());
-    bool isTwice = it->second;
-    if(isAllTrue || isTwice){   // なげる
-        parent_->input(pool_);
-        for(auto& item : fromFlags_)    item.second = false;
-        if(isTwice){
-            pool_ = src;
-            it->second = true;
-        }
+    // 同じUnitからの二回目のRecvか
+    auto it = fromFlags_.find(uid);
+    assert(it != fromFlags_.end());
+    if(it->second){
+        emitPool();
+        pool_ = src;
+        it->second = true;
         return;
     }
     it->second = true;
+
+    // 全てのUnitからRecvしたか
+    if(std::all_of(fromFlags_.begin(), fromFlags_.end(),
+        [](const std::pair<UID, bool>& item) { return item.second; }))
+    {
+        emitPool();
+    }
 
     std::transform(
         pool_.begin(), pool_.end(),
@@ -47,6 +50,12 @@ void Socket::onRecv(const UID& uid, const PCMWave& src)
             return t + f;
         }
     );
+}
+
+void Unit::Socket::emitPool()
+{
+    parent_->input(pool_);
+    for(auto& item : fromFlags_)    item.second = false;
 }
 
 ///
