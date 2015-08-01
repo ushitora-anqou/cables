@@ -8,8 +8,8 @@ void connect(const std::vector<UnitPtr>& from, const std::vector<UnitPtr>& to)
     for(auto& f : from){
         for(auto& t : to){
             f->socket_->toSockets_.push_back(t->socket_);
-            t->socket_->fromFlags_.insert(
-                std::make_pair(f->socket_->getUID(), false));
+            t->socket_->pool_.insert(
+                std::make_pair(f->socket_->getUID(), std::queue<PCMWave>()));
         }
     }
 }
@@ -18,9 +18,7 @@ void connect(const std::vector<UnitPtr>& from, const std::vector<UnitPtr>& to)
 
 Unit::Socket::Socket(Unit *parent)
     : uid_(boost::uuids::random_generator()()), parent_(parent)
-{
-    pool_.fill(PCMWave::Sample(0, 0));
-}
+{}
 
 
 void Unit::Socket::write(const PCMWave& src)
@@ -31,38 +29,33 @@ void Unit::Socket::write(const PCMWave& src)
 void Unit::Socket::onRecv(const UID& uid, const PCMWave& src)
 {
     boost::mutex::scoped_lock lock(mtx_);
-
-    // 同じUnitからの二回目のRecvか
-    auto& flag = fromFlags_.at(uid);
-    if(flag){
-        emitPool();
-        pool_ = src;
-        flag = true;
-        return;
-    }
-    flag = true;
+    
+    pool_.at(uid).push(src);
 
     // 全てのUnitからRecvしたか
-    if(std::all_of(fromFlags_.begin(), fromFlags_.end(),
-        [](const std::pair<UID, bool>& item) { return item.second; }))
+    if(std::all_of(pool_.begin(), pool_.end(),
+        [](const std::pair<UID, std::queue<PCMWave>>& item) { return !item.second.empty(); }))
     {
         emitPool();
     }
-
-    std::transform(
-        pool_.begin(), pool_.end(),
-        src.begin(), pool_.begin(),
-        [](const PCMWave::Sample& t, const PCMWave::Sample& f) {
-            return t + f;
-        }
-    );
 }
 
 void Unit::Socket::emitPool()
 {
-    parent_->input(pool_);
-    pool_.fill(PCMWave::Sample(0, 0));
-    for(auto& item : fromFlags_)    item.second = false;
+    PCMWave wave;
+    wave.fill(PCMWave::Sample(0, 0));
+    for(auto& p : pool_){
+        std::transform(
+            p.second.front().begin(), p.second.front().end(),
+            wave.begin(), wave.begin(),
+            [](const PCMWave::Sample& t, const PCMWave::Sample& f) {
+                return t + f;
+            }
+        );
+        p.second.pop();
+    }
+
+    parent_->input(wave);
 }
 
 ///

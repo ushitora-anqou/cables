@@ -10,6 +10,7 @@
 #include <cstdint>
 #include <map>
 #include <memory>
+#include <queue>
 
 class Unit;
 
@@ -42,9 +43,8 @@ private:
 
     private:
         UID uid_;
-        std::map<UID, bool> fromFlags_;
+        std::map<UID, std::queue<PCMWave>> pool_;
         std::vector<SocketWeakPtr> toSockets_;
-        PCMWave pool_;
         boost::mutex mtx_;
         Unit *parent_;
 
