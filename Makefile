@@ -1,4 +1,4 @@
-CPPS=main.cpp wavefile.cpp socket.cpp helper.cpp
+CPPS=main.cpp wavefile.cpp socket.cpp helper.cpp portaudio.cpp
 OBJS=$(CPPS:.cpp=.o)
 LIB=-lboost_thread -lboost_system -lportaudio
 FLAGS=-g -O0 -std=c++11

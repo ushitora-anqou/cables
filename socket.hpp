@@ -52,9 +52,7 @@ private:
         void emitPool();
 
     public:
-        Socket(Unit *parent)
-            : uid_(boost::uuids::random_generator()()), parent_(parent)
-        {}
+        Socket(Unit *parent);
         ~Socket(){}
 
         const UID& getUID() const { return uid_; }
@@ -74,6 +72,7 @@ public:
     Unit();
     virtual ~Unit();
 
+    bool isAlive() const;
     void start();
     void stop();
     void input(const PCMWave& wave);

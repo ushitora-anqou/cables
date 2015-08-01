@@ -82,25 +82,114 @@ public:
     }
 };
 
+///
+
+#include "audio.hpp"
+#include "portaudio.hpp"
+
+class MicOutUnit : public ThreadOutUnit
+{
+private:
+    std::unique_ptr<AudioStream> stream_;
+
+public:
+    MicOutUnit(std::unique_ptr<AudioStream> stream);
+    ~MicOutUnit(){}
+
+    void construct();
+    PCMWave update();
+    void destruct();
+};
+
+MicOutUnit::MicOutUnit(std::unique_ptr<AudioStream> stream)
+    : stream_(std::move(stream))
+{}
+
+void MicOutUnit::construct()
+{
+    stream_->start();
+}
+
+void MicOutUnit::destruct()
+{
+    stream_->stop();
+}
+
+PCMWave MicOutUnit::update()
+{
+    return std::move(stream_->read());
+}
+
+///
+
+class SpeakerOutUnit : public Unit
+{
+private:
+    std::unique_ptr<AudioStream> stream_;
+
+public:
+    SpeakerOutUnit(std::unique_ptr<AudioStream> stream)
+        : stream_(std::move(stream))
+    {}
+    ~SpeakerOutUnit(){}
+
+    void startImpl() { stream_->start(); }
+    void stopImpl() { stream_->stop(); }
+    void inputImpl(const PCMWave& wave) { stream_->write(wave); }
+};
+
+///
+
+#include <unordered_map>
+
 int main(int argc, char **argv)
 {
-    std::vector<UnitPtr> units = {
-        makeUnit<SinOutUnit>(1000),
-        makeUnit<VolumeFilter>(0.5),
-        makeUnit<FileInUnit>("test0.wav"),
-        makeUnit<SinOutUnit>(1000),
-        makeUnit<VolumeFilter>(0.5),
-        makeUnit<FileInUnit>("test1.wav"),
-        makeUnit<FileInUnit>("test2.wav")
-    };
-    connect({units.at(0)}, {units.at(1)});
-    connect({units.at(1)}, {units.at(2), units.at(6)});
-    connect({units.at(3)}, {units.at(4)});
-    connect({units.at(4)}, {units.at(5), units.at(6)});
+    std::shared_ptr<AudioSystem> system(std::make_shared<PAAudioSystem>());
 
-    for(auto& unit : units) unit->start();
-    sleepms(5000);
-    for(auto& unit : units) unit->stop();
+    std::unordered_map<std::string, UnitPtr> units = {
+        {"mic", makeUnit<MicOutUnit>(system->createInputStream(system->getDefaultInputDevice()))},
+        {"sin", makeUnit<SinOutUnit>(500)},
+        {"vfl", makeUnit<VolumeFilter>(0.5)},
+        {"infile", makeUnit<FileInUnit>("test.wav")},
+        {"spk", makeUnit<SpeakerOutUnit>(system->createOutputStream(system->getDefaultOutputDevice()))},
+    };
+    connect({units.at("mic")}, {units.at("infile"), units.at("spk")});
+    connect({units.at("sin")}, {units.at("vfl")});
+    connect({units.at("vfl")}, {units.at("infile"), units.at("spk")});
+
+    /*
+    std::vector<UnitPtr> units = {
+        makeUnit<MicOutUnit>(system->createInputStream(system->getDefaultInputDevice())),
+        makeUnit<SinOutUnit>(500),
+        makeUnit<FileInUnit>("test.wav"),
+        makeUnit<SpeakerOutUnit>(system->createOutputStream(system->getDefaultOutputDevice())),
+    };
+    connect({units.at(0)}, {units.at(2), units.at(3)});
+    connect({units.at(1)}, {units.at(2), units.at(3)});
+    */
+
+    for(auto& unit : units) unit.second->start();
+
+    while(true)
+    {
+        std::string input;
+        std::cin >> input;
+        if(input == "quit")  break;
+        else if(input == "stop"){
+            std::cin >> input;
+            auto& unit = *units.at(input);
+            if(unit.isAlive())  unit.stop();
+            else    std::cout << "Already stopped." << std::endl;
+        }
+        else if(input == "start"){
+            std::cin >> input;
+            auto& unit = *units.at(input);
+            if(!unit.isAlive())  unit.start();
+            else    std::cout << "Already started." << std::endl;
+        }
+    }
+
+    for(auto& unit : units) unit.second->stop();
 
 
     return 0;

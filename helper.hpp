@@ -3,8 +3,12 @@
 #define ___HELPER_HPP___
 
 #include <boost/preprocessor.hpp>
+#include <cassert>
 #include <chrono>
 #include <memory>
+
+#define ZARU_ASSERT(res) \
+    assert((res));
 
 #define TYPE_SIZE_ASSERT(type, size) \
     static_assert(sizeof((type)) == size, \
