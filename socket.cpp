@@ -9,7 +9,7 @@ void connect(const std::vector<UnitPtr>& from, const std::vector<UnitPtr>& to)
         for(auto& t : to){
             f->socket_->toSockets_.push_back(t->socket_);
             t->socket_->pool_.insert(
-                std::make_pair(f->socket_->getUID(), std::queue<PCMWave>()));
+                std::make_pair(f, std::queue<PCMWave>()));
         }
     }
 }
@@ -17,24 +17,27 @@ void connect(const std::vector<UnitPtr>& from, const std::vector<UnitPtr>& to)
 ///
 
 Unit::Socket::Socket(Unit *parent)
-    : uid_(boost::uuids::random_generator()()), parent_(parent)
+    : parent_(parent)
 {}
 
 
 void Unit::Socket::write(const PCMWave& src)
 {
-    for(auto& s : toSockets_)   s.lock()->onRecv(uid_, src);
+    for(auto& s : toSockets_)   s->onRecv(parent_->shared_from_this(), src);
 }
 
-void Unit::Socket::onRecv(const UID& uid, const PCMWave& src)
+void Unit::Socket::onRecv(const UnitPtr& unit, const PCMWave& src)
 {
     boost::mutex::scoped_lock lock(mtx_);
     
-    pool_.at(uid).push(src);
+    pool_.at(unit).push(src);
 
     // 全てのUnitからRecvしたか
+    // 死んでる奴は(isAlive() == false)はRecvとみなす
     if(std::all_of(pool_.begin(), pool_.end(),
-        [](const std::pair<UID, std::queue<PCMWave>>& item) { return !item.second.empty(); }))
+        [](const std::pair<UnitPtr, const std::queue<PCMWave>>& item) {
+            return !(item.first->isAlive() && item.second.empty());
+        }))
     {
         emitPool();
     }
@@ -45,17 +48,19 @@ void Unit::Socket::emitPool()
     PCMWave wave;
     wave.fill(PCMWave::Sample(0, 0));
     for(auto& p : pool_){
+        auto& que = p.second;
+        if(que.empty()) continue;
         std::transform(
-            p.second.front().begin(), p.second.front().end(),
+            que.front().begin(), que.front().end(),
             wave.begin(), wave.begin(),
             [](const PCMWave::Sample& t, const PCMWave::Sample& f) {
                 return t + f;
             }
         );
-        p.second.pop();
+        que.pop();
     }
 
-    parent_->input(wave);
+    if(parent_->isAlive())  parent_->input(wave);
 }
 
 ///
@@ -63,6 +68,7 @@ void Unit::Socket::emitPool()
 Unit::Unit()
     : isAlive_(false)
 {
+    //auto ptr = shared_from_this();
     socket_ = std::make_shared<Socket>(this);
 }
 
@@ -134,7 +140,8 @@ void WaitThreadOutUnit::startImpl()
             auto prevTime = getNowTime();
             while(!hasFinished_){
                 PCMWave wave(std::move(update()));
-                sleepms(90 - getInterval(prevTime, getNowTime()));
+                int interval = 100 - getInterval(prevTime, getNowTime());
+                if(interval >= 10)  sleepms(interval == 100 ? 90 : interval);
                 prevTime = getNowTime();
                 if(!hasFinished_)   send(wave);
             }

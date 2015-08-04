@@ -4,9 +4,6 @@
 
 #include "pcmwave.hpp"
 #include <boost/thread.hpp>
-#include <boost/uuid/uuid.hpp>
-#include <boost/uuid/uuid_io.hpp>
-#include <boost/uuid/uuid_generators.hpp>
 #include <cstdint>
 #include <map>
 #include <memory>
@@ -15,7 +12,6 @@
 class Unit;
 
 using UnitPtr = std::shared_ptr<Unit>;
-using UnitWeakPtr = std::weak_ptr<Unit>;
 
 template<class T, class... Args>
 UnitPtr makeUnit(Args&&... args)
@@ -25,26 +21,21 @@ UnitPtr makeUnit(Args&&... args)
 void connect(const std::vector<UnitPtr>& from, const std::vector<UnitPtr>& to);
 
 
-class Unit
+class Unit : public std::enable_shared_from_this<Unit>
 {
     friend void connect(const std::vector<UnitPtr>&, const std::vector<UnitPtr>&);
 
 private:
     class Socket;
     using SocketPtr = std::shared_ptr<Unit::Socket>;
-    using SocketWeakPtr = std::weak_ptr<Unit::Socket>;
 
     class Socket
     {
         friend void connect(const std::vector<UnitPtr>&, const std::vector<UnitPtr>&);
 
-    public:
-        using UID = boost::uuids::uuid;
-
     private:
-        UID uid_;
-        std::map<UID, std::queue<PCMWave>> pool_;
-        std::vector<SocketWeakPtr> toSockets_;
+        std::map<UnitPtr, std::queue<PCMWave>> pool_;
+        std::vector<SocketPtr> toSockets_;
         boost::mutex mtx_;
         Unit *parent_;
 
@@ -55,10 +46,8 @@ private:
         Socket(Unit *parent);
         ~Socket(){}
 
-        const UID& getUID() const { return uid_; }
-
         void write(const PCMWave& src);
-        void onRecv(const UID& uid, const PCMWave& src);
+        void onRecv(const UnitPtr& unit, const PCMWave& src);
     };
 
 private:

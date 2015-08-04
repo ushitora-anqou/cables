@@ -114,7 +114,7 @@ std::unique_ptr<AudioStream> PAAudioSystem::createInputStream(const AudioDeviceP
     ) == paNoError);
 
     auto ret = make_unique<PAAudioStream>(stream);
-    return ret;
+    return std::move(ret);
 }
 
 std::unique_ptr<AudioStream> PAAudioSystem::createOutputStream(const AudioDevicePtr& device)

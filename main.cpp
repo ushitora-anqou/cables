@@ -1,149 +1,66 @@
-#include "socket.hpp"
-#include "helper.hpp"
-#include <iostream>
-
-#include <cmath>
-class SinOutUnit : public WaitThreadOutUnit
-{
-private:
-    std::vector<double> sinTable_;
-    int p_;
-
-public:
-    SinOutUnit(int f);
-    ~SinOutUnit(){}
-
-    PCMWave update();
-};
-
-SinOutUnit::SinOutUnit(int f)
-    : sinTable_(PCMWave::SAMPLE_RATE / f, 0), p_(0)
-{
-    int t = sinTable_.size();
-    for(int i = 0;i < t;i++){
-        sinTable_.at(i) = static_cast<double>(::sin(2 * 3.14159265358979323846264338 * i / t));
-    }
-}
-
-PCMWave SinOutUnit::update()
-{
-    auto& tbl = sinTable_;
-    PCMWave ret;
-    for(auto& s : ret){
-        s.left = tbl.at(p_);
-        s.right = tbl.at(p_);
-        p_ = (p_ + 1) % tbl.size();
-    }
-
-    return std::move(ret);
-}
-
-///
-
-#include "wavefile.hpp"
-// ファイルに書き込む
-class FileInUnit : public Unit
-{
-private:
-    WaveOutFile file_;
-
-public:
-    FileInUnit(const std::string& filename)
-        : file_(filename)
-    {}
-
-    void inputImpl(const PCMWave& wave)
-    {
-        file_.write(wave);
-    }
-};
-
-///
-
-class VolumeFilter : public Unit
-{
-private:
-    double rate_;
-
-public:
-    VolumeFilter(double rate)
-        : rate_(rate)
-    {}
-
-    void inputImpl(const PCMWave& wave)
-    {
-        PCMWave ret;
-        std::transform(
-            wave.begin(), wave.end(),
-            ret.begin(),
-            [this](const PCMWave::Sample& s) { return s * rate_; }
-        );
-        send(ret);
-    }
-};
-
-///
-
-#include "audio.hpp"
 #include "portaudio.hpp"
-
-class MicOutUnit : public ThreadOutUnit
-{
-private:
-    std::unique_ptr<AudioStream> stream_;
-
-public:
-    MicOutUnit(std::unique_ptr<AudioStream> stream);
-    ~MicOutUnit(){}
-
-    void construct();
-    PCMWave update();
-    void destruct();
-};
-
-MicOutUnit::MicOutUnit(std::unique_ptr<AudioStream> stream)
-    : stream_(std::move(stream))
-{}
-
-void MicOutUnit::construct()
-{
-    stream_->start();
-}
-
-void MicOutUnit::destruct()
-{
-    stream_->stop();
-}
-
-PCMWave MicOutUnit::update()
-{
-    return std::move(stream_->read());
-}
-
-///
-
-class SpeakerOutUnit : public Unit
-{
-private:
-    std::unique_ptr<AudioStream> stream_;
-
-public:
-    SpeakerOutUnit(std::unique_ptr<AudioStream> stream)
-        : stream_(std::move(stream))
-    {}
-    ~SpeakerOutUnit(){}
-
-    void startImpl() { stream_->start(); }
-    void stopImpl() { stream_->stop(); }
-    void inputImpl(const PCMWave& wave) { stream_->write(wave); }
-};
-
-///
-
+#include "helper.hpp"
+#include "units.hpp"
+#include <cmath>
+#include <iostream>
 #include <unordered_map>
+
+#include <curses.h>
+
+class PrintFilter : public Unit
+{
+private:
+    WINDOW *win_;
+
+private:
+    void printLine(int length, const PCMWave::Sample& sample);
+
+public:
+    PrintFilter(WINDOW *win)
+        : win_(win)
+    {}
+    ~PrintFilter(){}
+
+    void inputImpl(const PCMWave& wave);
+};
+
+void PrintFilter::printLine(int length, const PCMWave::Sample& sample)
+{
+    clear();
+    double al = std::abs(sample.left), ar = std::abs(sample.right),
+           ldb = al == 0 ? length * 5 : 20 * std::log10(al),
+           rdb = ar == 0 ? length * 5 : 20 * std::log10(ar);
+
+    const double DB_PER_CHAR = 0.5;
+    wmove(win_, 0, 0);  wclrtoeol(win_);
+    wmove(win_, 1, 0);  wclrtoeol(win_);
+    mvwaddch(win_, 0, 0, '*');
+    mvwaddch(win_, 1, 0, '*');
+    for(int i = 0;i < length;i++){
+        if(ldb >= i * -DB_PER_CHAR)    mvwaddch(win_, 0, length - i, '*');
+        if(rdb >= i * -DB_PER_CHAR)    mvwaddch(win_, 1, length - i, '*');
+    }
+    refresh();
+}
+
+void PrintFilter::inputImpl(const PCMWave& wave)
+{
+    printLine(120, *wave.begin());
+    send(wave);
+}
+
+void connect(const std::unordered_map<std::string, UnitPtr>& units, const std::vector<std::string>& from, const std::vector<std::string>& to)
+{
+    std::vector<UnitPtr> fromUnits, toUnits;
+    for(auto& str : from)   fromUnits.push_back(units.at(str));
+    for(auto& str : to)     toUnits.push_back(units.at(str));
+    connect(fromUnits, toUnits);
+}
 
 int main(int argc, char **argv)
 {
+    //assert(initscr() != NULL);
+
     std::shared_ptr<AudioSystem> system(std::make_shared<PAAudioSystem>());
 
     std::unordered_map<std::string, UnitPtr> units = {
@@ -152,45 +69,35 @@ int main(int argc, char **argv)
         {"vfl", makeUnit<VolumeFilter>(0.5)},
         {"infile", makeUnit<FileInUnit>("test.wav")},
         {"spk", makeUnit<SpeakerOutUnit>(system->createOutputStream(system->getDefaultOutputDevice()))},
+        //{"pfl", makeUnit<PrintFilter>(stdscr)},
+        {"pmp", makeUnit<PumpOutUnit>()},
     };
-    connect({units.at("mic")}, {units.at("infile"), units.at("spk")});
-    connect({units.at("sin")}, {units.at("vfl")});
-    connect({units.at("vfl")}, {units.at("infile"), units.at("spk")});
-
-    /*
-    std::vector<UnitPtr> units = {
-        makeUnit<MicOutUnit>(system->createInputStream(system->getDefaultInputDevice())),
-        makeUnit<SinOutUnit>(500),
-        makeUnit<FileInUnit>("test.wav"),
-        makeUnit<SpeakerOutUnit>(system->createOutputStream(system->getDefaultOutputDevice())),
-    };
-    connect({units.at(0)}, {units.at(2), units.at(3)});
-    connect({units.at(1)}, {units.at(2), units.at(3)});
-    */
+    //connect({units.at("mic")}, {units.at("infile"), units.at("spk")});
+    //connect({units.at("sin")}, {units.at("vfl")});
+    //connect({units.at("vfl")}, {units.at("infile"), units.at("spk")});
+    connect(units, {"mic"}, {"infile", "spk"});
+    connect(units, {"sin", "pmp"}, {"vfl"});
+    connect(units, {"vfl"}, {"infile", "spk"});
+    //connect(units, {"pfl"}, {"spk"});
 
     for(auto& unit : units) unit.second->start();
 
-    while(true)
+    sleepms(1000);
+    //units.at("sin")->stop();
+
+    sleepms(100000);
+    //while(true)
     {
-        std::string input;
-        std::cin >> input;
-        if(input == "quit")  break;
-        else if(input == "stop"){
-            std::cin >> input;
-            auto& unit = *units.at(input);
-            if(unit.isAlive())  unit.stop();
-            else    std::cout << "Already stopped." << std::endl;
-        }
-        else if(input == "start"){
-            std::cin >> input;
-            auto& unit = *units.at(input);
-            if(!unit.isAlive())  unit.start();
-            else    std::cout << "Already started." << std::endl;
-        }
+        //std::string input;
+        //std::cin >> input;
+        //if(input == "quit")  break;
     }
 
-    for(auto& unit : units) unit.second->stop();
+    for(auto& unit : units){
+        if(unit.second->isAlive())  unit.second->stop();
+    }
 
+    //endwin();
 
     return 0;
 }

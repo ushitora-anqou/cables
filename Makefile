@@ -1,13 +1,14 @@
-CPPS=main.cpp wavefile.cpp socket.cpp helper.cpp portaudio.cpp
+CXX=g++
+CPPS=main.cpp units.cpp wavefile.cpp socket.cpp helper.cpp portaudio.cpp
 OBJS=$(CPPS:.cpp=.o)
-LIB=-lboost_thread -lboost_system -lportaudio
+LIB=-lboost_thread -lboost_system -lportaudio -lncurses
 FLAGS=-g -O0 -std=c++11
 
 cables: $(OBJS)
-	g++ -o $@ $(OBJS) $(LIB)
+	$(CXX) -o $@ $(OBJS) $(LIB)
 
 .cpp.o:
-	g++ $(FLAGS) -c $< -o $(<:.cpp=.o)
+	$(CXX) $(FLAGS) -c $< -o $(<:.cpp=.o)
 
 clean: 
 	@rm -f $(OBJS)
