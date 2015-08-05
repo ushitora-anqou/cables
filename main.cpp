@@ -82,10 +82,9 @@ int main(int argc, char **argv)
 
     for(auto& unit : units) unit.second->start();
 
-    sleepms(1000);
+    sleepms(3000);
     //units.at("sin")->stop();
 
-    sleepms(100000);
     //while(true)
     {
         //std::string input;

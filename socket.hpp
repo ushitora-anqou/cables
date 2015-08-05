@@ -52,6 +52,7 @@ private:
 
 private:
     bool isAlive_;
+    boost::shared_mutex mtx_;
     SocketPtr socket_;
 
 protected:
@@ -61,7 +62,7 @@ public:
     Unit();
     virtual ~Unit();
 
-    bool isAlive() const;
+    bool isAlive();
     void start();
     void stop();
     void input(const PCMWave& wave);
