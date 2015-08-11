@@ -75,10 +75,12 @@ int main(int argc, char **argv)
     //connect({units.at("mic")}, {units.at("infile"), units.at("spk")});
     //connect({units.at("sin")}, {units.at("vfl")});
     //connect({units.at("vfl")}, {units.at("infile"), units.at("spk")});
-    connect(units, {"mic"}, {"infile", "spk"});
-    connect(units, {"sin", "pmp"}, {"vfl"});
-    connect(units, {"vfl"}, {"infile", "spk"});
+    //connect(units, {"mic"}, {"infile", "spk"});
+    //connect(units, {"sin", "pmp"}, {"vfl"});
+    //connect(units, {"vfl"}, {"infile", "spk"});
     //connect(units, {"pfl"}, {"spk"});
+    connect(units, {"sin"}, {"vfl", "spk"});
+    connect(units, {"vfl"}, {"vfl", "spk"});
 
     for(auto& unit : units) unit.second->start();
 

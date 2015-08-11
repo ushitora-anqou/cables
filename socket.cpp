@@ -60,7 +60,7 @@ void Unit::Socket::emitPool()
         que.pop();
     }
 
-    if(parent_->isAlive())  parent_->input(wave);
+    parent_->input(wave);
 }
 
 ///
@@ -79,7 +79,7 @@ Unit::~Unit()
 
 bool Unit::isAlive()
 {
-    boost::shared_lock<boost::shared_mutex> lock(mtx_);
+    //boost::shared_lock<boost::shared_mutex> lock(mtx_);
     return isAlive_;
 }
 
@@ -108,8 +108,7 @@ void Unit::stop()
 void Unit::input(const PCMWave& wave)
 {
     boost::shared_lock<boost::shared_mutex> lock(mtx_);
-    assert(isAlive_);
-    inputImpl(wave);
+    if(isAlive_)    inputImpl(wave);
 }
 
 void Unit::send(const PCMWave& wave)
