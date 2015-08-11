@@ -2,4 +2,10 @@ cables
 *.o
 *.wav
 *.swp
-
+.gitconfig
+.gitignore
+log.txt
+~*
+*.un~
+*.dll
+Makefile
