@@ -3,6 +3,12 @@
 
 bool GlutViewSystem::isFirst_ = true;
 
+GlutView::GlutView()
+    : glut::Window("recorder", 640, 480), hasFinished_(false)
+{
+    
+}
+
 GlutViewSystem::GlutViewSystem(int argc, char **argv)
 {
 	if(isFirst_){
@@ -79,7 +85,7 @@ void GlutView::displayFunc()
 	draw([this]() {
 		boost::mutex::scoped_lock lock(mtx_);
 
-		static const double PIXEL_PER_DB = 4, LEVEL_METER_BAR_LENGTH = -LEVEL_METER_DB_MIN * PIXEL_PER_DB;
+		static const double PIXEL_PER_DB = 8, LEVEL_METER_BAR_LENGTH = -LEVEL_METER_DB_MIN * PIXEL_PER_DB;
 		static const int LINE_HEIGHT = 25;
 		for(int i = 0;i < data_.size();i++){
 			auto& ldb = data_.at(i).level.first, rdb = data_.at(i).level.second;

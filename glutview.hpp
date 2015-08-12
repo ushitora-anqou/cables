@@ -82,9 +82,7 @@ public:
 	void closeFunc() override;
 
 public:
-    GlutView()
-		: hasFinished_(false)
-	{}
+    GlutView();
     ~GlutView(){}
 
     UID issueGroup(const std::string& name) override;

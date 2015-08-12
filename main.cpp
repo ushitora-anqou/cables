@@ -74,6 +74,50 @@ void PrintFilter::inputImpl(const PCMWave& wave)
 
 */
 
+class UnitManager
+{
+private:
+    std::unordered_map<std::string, UnitPtr> units_;
+
+public:
+    UnitManager(){}
+    ~UnitManager(){}
+
+    template<class T, class... Args>
+    void makeUnit(const std::string& name, Args&&... args)
+    {
+        units_.insert(std::make_pair(name, ::makeUnit<T>(std::forward<Args>(args)...)));
+    }
+
+    void connect(const std::vector<std::string>& from, const std::vector<std::string>& to)
+    {
+        std::vector<UnitPtr> fromUnits, toUnits;
+        for(auto& str : from)   fromUnits.push_back(units_.at(str));
+        for(auto& str : to)     toUnits.push_back(units_.at(str));
+        ::connect(fromUnits, toUnits);
+    }
+
+    void startAll()
+    {
+        for(auto& unit : units_){
+            if(!unit.second->isAlive())  unit.second->start();
+        }
+    }
+
+    void stopAll()
+    {
+        for(auto& unit : units_){
+            if(unit.second->isAlive())  unit.second->stop();
+        }
+    }
+
+    std::weak_ptr<Unit> getUnit(const std::string& name)
+    {
+        return units_.at(name);
+    }
+};
+
+/*
 void connect(const std::unordered_map<std::string, UnitPtr>& units, const std::vector<std::string>& from, const std::vector<std::string>& to)
 {
     std::vector<UnitPtr> fromUnits, toUnits;
@@ -81,22 +125,29 @@ void connect(const std::unordered_map<std::string, UnitPtr>& units, const std::v
     for(auto& str : to)     toUnits.push_back(units.at(str));
     connect(fromUnits, toUnits);
 }
-
-/*
-int main(int argc, char **argv)
-{
-	std::shared_ptr<ViewSystem> viewSystem = std::make_shared<GlutViewSystem>(argc, argv);
-	auto view = viewSystem->createView();
-	auto ptr = make_unique<boost::thread>([]() {
-		std::string input;
-		std::cin >> input;
-	});
-	glut::MainLoop();
-	ptr->join();
-	return 0;
-}
 */
 
+int main(int argc, char **argv)
+{
+    std::shared_ptr<AudioSystem> system(std::make_shared<PAAudioSystem>());
+	std::shared_ptr<ViewSystem> viewSystem(std::make_shared<GlutViewSystem>(argc, argv));
+
+    UnitManager manager;
+    manager.makeUnit<PumpOutUnit>("pmp0");
+    manager.makeUnit<MicOutUnit>("mic0", system->createInputStream(system->getDefaultInputDevice()));
+    manager.makeUnit<SpeakerInUnit>("spk", system->createOutputStream(system->getDefaultOutputDevice()));
+    manager.makeUnit<PrintFilter>("pfl0", viewSystem->createView(), "pfl0");
+
+    manager.connect({"pmp0", "mic0"}, {"pfl0"});
+    manager.connect({"pfl0"}, {"spk"});
+
+    manager.startAll();
+    viewSystem->run();
+    manager.stopAll();
+}
+
+
+/*
 int main(int argc, char **argv)
 {
     //assert(initscr() != NULL);
@@ -129,12 +180,10 @@ int main(int argc, char **argv)
 	//auto view = viewSystem->createView();
     for(auto& unit : units) unit.second->start();
 
-	/*
-	auto ptr = make_unique<boost::thread>([]() {
-		std::string input;
-		std::cin >> input;
-	});
-	*/
+	//auto ptr = make_unique<boost::thread>([]() {
+	//	std::string input;
+	//	std::cin >> input;
+	//});
 
 	viewSystem->run();
     //units.at("sin")->stop();
@@ -154,3 +203,4 @@ int main(int argc, char **argv)
 
     return 0;
 }
+*/

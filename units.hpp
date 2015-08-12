@@ -74,16 +74,16 @@ public:
     void destruct();
 };
 
-class SpeakerOutUnit : public Unit
+class SpeakerInUnit : public Unit
 {
 private:
     std::unique_ptr<AudioStream> stream_;
 
 public:
-    SpeakerOutUnit(std::unique_ptr<AudioStream> stream)
+    SpeakerInUnit(std::unique_ptr<AudioStream> stream)
         : stream_(std::move(stream))
     {}
-    ~SpeakerOutUnit(){}
+    ~SpeakerInUnit(){}
 
     void startImpl() { stream_->start(); }
     void stopImpl() { stream_->stop(); }
