@@ -8,7 +8,7 @@ GlutViewSystem::GlutViewSystem(int argc, char **argv)
 	if(isFirst_){
 		isFirst_ = false;
 		glut::Init(argc, argv);
-		glut::InitDisplayMode(GLUT_RGBA);
+		glut::InitDisplayMode(GLUT_DOUBLE | GLUT_RGBA);
 	}
 }
 
@@ -23,8 +23,8 @@ ViewPtr GlutViewSystem::createView()
 	view->show();
 	glClearColor(1.0, 1.0, 1.0, 1.0);
 	glut::IgnoreKeyRepeat(GL_TRUE);
-	glut::SetOption(GLUT_ACTION_ON_WINDOW_CLOSE, GLUT_ACTION_CONTINUE_EXECUTION);
-	//glut::SetOption(GLUT_ACTION_ON_WINDOW_CLOSE, GLUT_ACTION_GLUTMAINLOOP_RETURNS);
+	//glut::SetOption(GLUT_ACTION_ON_WINDOW_CLOSE, GLUT_ACTION_CONTINUE_EXECUTION);
+	glut::SetOption(GLUT_ACTION_ON_WINDOW_CLOSE, GLUT_ACTION_GLUTMAINLOOP_RETURNS);
 
 	return view;
 }
@@ -122,7 +122,7 @@ void GlutView::keyboardFunc(unsigned char key, int x, int y)
 	switch(key)
 	{
 	case '\033':
-		hasFinished_ = true;
+        glutLeaveMainLoop();
 		break;
 	}
 }
@@ -138,18 +138,12 @@ void GlutView::keyboardUpFunc(unsigned char key, int x, int y)
 
 void GlutView::timerFunc(int idx)
 {
-	if(hasFinished_){
-		std::cout << "DEG" << std::endl;
-		glutLeaveMainLoop();
-		return ;
-	}
 	postRedisplay();
 	createTimer(50, 0);
 }
 
 void GlutView::closeFunc()
 {
-	std::cout << "BAKAME" << std::endl;
 }
 
 
