@@ -123,6 +123,8 @@ int main(int argc, char **argv)
     //connect(units, {"pfl"}, {"spk"});
 	connect({units.at("mic")}, {units.at("pfl")});
 	connect({units.at("pfl")}, {units.at("infile"), units.at("spk")});
+    //connect(units, {"sin"}, {"vfl", "spk"});
+    //connect(units, {"vfl"}, {"vfl", "spk"});
 
 	//auto view = viewSystem->createView();
     for(auto& unit : units) unit.second->start();

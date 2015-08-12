@@ -60,7 +60,7 @@ void Unit::Socket::emitPool()
         que.pop();
     }
 
-    if(parent_->isAlive())  parent_->input(wave);
+    parent_->input(wave);
 }
 
 ///
@@ -68,38 +68,47 @@ void Unit::Socket::emitPool()
 Unit::Unit()
     : isAlive_(false)
 {
-    //auto ptr = shared_from_this();
     socket_ = std::make_shared<Socket>(this);
 }
 
 Unit::~Unit()
 {
+    boost::shared_lock<boost::shared_mutex> lock(mtx_);
     assert(!isAlive_);
 }
 
-bool Unit::isAlive() const
+bool Unit::isAlive()
 {
+    //boost::shared_lock<boost::shared_mutex> lock(mtx_);
     return isAlive_;
 }
 
 void Unit::start()
 {
+    boost::upgrade_lock<boost::shared_mutex> readLock(mtx_);
     assert(!isAlive_);
-    isAlive_ = true;
-    startImpl();
+    {
+        boost::upgrade_to_unique_lock<boost::shared_mutex> writeLock(readLock);
+        isAlive_ = true;
+        startImpl();
+    }
 }
 
 void Unit::stop()
 {
+    boost::upgrade_lock<boost::shared_mutex> readLock(mtx_);
     assert(isAlive_);
-    isAlive_ = false;
-    stopImpl();
+    {
+        boost::upgrade_to_unique_lock<boost::shared_mutex> writeLock(readLock);
+        isAlive_ = false;
+        stopImpl();
+    }
 }
 
 void Unit::input(const PCMWave& wave)
 {
-    assert(isAlive_);
-    inputImpl(wave);
+    boost::shared_lock<boost::shared_mutex> lock(mtx_);
+    if(isAlive_)    inputImpl(wave);
 }
 
 void Unit::send(const PCMWave& wave)

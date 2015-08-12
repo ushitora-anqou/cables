@@ -5,3 +5,7 @@ cables
 .gitconfig
 .gitignore
 log.txt
+~*
+*.un~
+*.dll
+Makefile
