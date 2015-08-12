@@ -1,6 +1,7 @@
 #include "portaudio.hpp"
 #include "helper.hpp"
 #include "units.hpp"
+#include "unitmanager.hpp"
 #include <cmath>
 #include <iostream>
 #include <unordered_map>
@@ -74,49 +75,6 @@ void PrintFilter::inputImpl(const PCMWave& wave)
 
 */
 
-class UnitManager
-{
-private:
-    std::unordered_map<std::string, UnitPtr> units_;
-
-public:
-    UnitManager(){}
-    ~UnitManager(){}
-
-    template<class T, class... Args>
-    void makeUnit(const std::string& name, Args&&... args)
-    {
-        units_.insert(std::make_pair(name, ::makeUnit<T>(std::forward<Args>(args)...)));
-    }
-
-    void connect(const std::vector<std::string>& from, const std::vector<std::string>& to)
-    {
-        std::vector<UnitPtr> fromUnits, toUnits;
-        for(auto& str : from)   fromUnits.push_back(units_.at(str));
-        for(auto& str : to)     toUnits.push_back(units_.at(str));
-        ::connect(fromUnits, toUnits);
-    }
-
-    void startAll()
-    {
-        for(auto& unit : units_){
-            if(!unit.second->isAlive())  unit.second->start();
-        }
-    }
-
-    void stopAll()
-    {
-        for(auto& unit : units_){
-            if(unit.second->isAlive())  unit.second->stop();
-        }
-    }
-
-    std::weak_ptr<Unit> getUnit(const std::string& name)
-    {
-        return units_.at(name);
-    }
-};
-
 /*
 void connect(const std::unordered_map<std::string, UnitPtr>& units, const std::vector<std::string>& from, const std::vector<std::string>& to)
 {
@@ -129,10 +87,10 @@ void connect(const std::unordered_map<std::string, UnitPtr>& units, const std::v
 
 int main(int argc, char **argv)
 {
-    std::shared_ptr<AudioSystem> system(std::make_shared<PAAudioSystem>());
-	std::shared_ptr<ViewSystem> viewSystem(std::make_shared<GlutViewSystem>(argc, argv));
-
     UnitManager manager;
+    std::shared_ptr<AudioSystem> system(std::make_shared<PAAudioSystem>());
+	std::shared_ptr<ViewSystem> viewSystem(std::make_shared<GlutViewSystem>(manager, argc, argv));
+
     manager.makeUnit<PumpOutUnit>("pmp0");
     manager.makeUnit<MicOutUnit>("mic0", system->createInputStream(system->getDefaultInputDevice()));
     manager.makeUnit<SpeakerInUnit>("spk", system->createOutputStream(system->getDefaultOutputDevice()));

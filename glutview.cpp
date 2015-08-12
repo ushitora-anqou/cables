@@ -1,15 +1,17 @@
 #include "glutview.hpp"
 #include "helper.hpp"
+#include "unitmanager.hpp"
 
 bool GlutViewSystem::isFirst_ = true;
 
-GlutView::GlutView()
-    : glut::Window("recorder", 640, 480), hasFinished_(false)
+GlutView::GlutView(UnitManager& unitManager)
+    : glut::Window("recorder", 640, 480), unitManager_(unitManager), hasFinished_(false)
 {
     
 }
 
-GlutViewSystem::GlutViewSystem(int argc, char **argv)
+GlutViewSystem::GlutViewSystem(UnitManager& unitManager, int argc, char **argv)
+    : unitManager_(unitManager)
 {
 	if(isFirst_){
 		isFirst_ = false;
@@ -24,7 +26,7 @@ GlutViewSystem::~GlutViewSystem()
 
 ViewPtr GlutViewSystem::createView()
 {
-	auto view = std::make_shared<GlutView>();
+	auto view = std::make_shared<GlutView>(unitManager_);
 	view->createTimer(50, 0);
 	view->show();
 	glClearColor(1.0, 1.0, 1.0, 1.0);

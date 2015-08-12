@@ -6,13 +6,16 @@
 #include "glut.hpp"
 #include <boost/thread.hpp>
 
+class UnitManager;
+
 class GlutViewSystem : public ViewSystem
 {
 private:
 	static bool isFirst_;
+    UnitManager& unitManager_;
 
 public:
-	GlutViewSystem(int argc, char **argv);
+	GlutViewSystem(UnitManager& unitManager, int argc, char **argv);
 	~GlutViewSystem();
 
 	ViewPtr createView();
@@ -49,7 +52,7 @@ class GlutView : public View, public glut::Window
 private:
 	const double LEVEL_METER_DB_MIN = -60;
 
-    boost::mutex mtx_;
+    UnitManager& unitManager_;
 
     struct GroupData
     {
@@ -61,9 +64,10 @@ private:
 		{}
     };
     std::vector<GroupData> data_;
+    boost::mutex mtx_;
 	bool hasFinished_;
 
-public:
+private:
 	template<class Render>
 	void draw(Render render)
 	{
@@ -82,7 +86,7 @@ public:
 	void closeFunc() override;
 
 public:
-    GlutView();
+    GlutView(UnitManager& unitManager);
     ~GlutView(){}
 
     UID issueGroup(const std::string& name) override;
