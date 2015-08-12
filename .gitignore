@@ -2,4 +2,6 @@ cables
 *.o
 *.wav
 *.swp
-
+.gitconfig
+.gitignore
+log.txt

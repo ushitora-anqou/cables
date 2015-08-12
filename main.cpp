@@ -5,6 +5,29 @@
 #include <iostream>
 #include <unordered_map>
 
+#include "glutview.hpp"
+
+class PrintFilter : public Unit
+{
+private:
+	std::shared_ptr<View> view_;
+	View::UID uid_;
+
+public:
+	PrintFilter(const std::shared_ptr<View>& view, const std::string& name)
+		: view_(view), uid_(view->issueGroup(name))
+	{}
+
+	void inputImpl(const PCMWave& wave)
+	{
+		view_->updateLevelMeter(uid_, *wave.begin());
+		send(wave);
+	}
+};
+
+
+/*
+
 #include <curses.h>
 
 class PrintFilter : public Unit
@@ -49,6 +72,8 @@ void PrintFilter::inputImpl(const PCMWave& wave)
     send(wave);
 }
 
+*/
+
 void connect(const std::unordered_map<std::string, UnitPtr>& units, const std::vector<std::string>& from, const std::vector<std::string>& to)
 {
     std::vector<UnitPtr> fromUnits, toUnits;
@@ -57,35 +82,61 @@ void connect(const std::unordered_map<std::string, UnitPtr>& units, const std::v
     connect(fromUnits, toUnits);
 }
 
+/*
+int main(int argc, char **argv)
+{
+	std::shared_ptr<ViewSystem> viewSystem = std::make_shared<GlutViewSystem>(argc, argv);
+	auto view = viewSystem->createView();
+	auto ptr = make_unique<boost::thread>([]() {
+		std::string input;
+		std::cin >> input;
+	});
+	glut::MainLoop();
+	ptr->join();
+	return 0;
+}
+*/
+
 int main(int argc, char **argv)
 {
     //assert(initscr() != NULL);
 
     std::shared_ptr<AudioSystem> system(std::make_shared<PAAudioSystem>());
+	std::shared_ptr<ViewSystem> viewSystem = std::make_shared<GlutViewSystem>(argc, argv);
 
     std::unordered_map<std::string, UnitPtr> units = {
         {"mic", makeUnit<MicOutUnit>(system->createInputStream(system->getDefaultInputDevice()))},
-        {"sin", makeUnit<SinOutUnit>(500)},
-        {"vfl", makeUnit<VolumeFilter>(0.5)},
+        //{"sin", makeUnit<SinOutUnit>(500)},
+        //{"vfl", makeUnit<VolumeFilter>(0.5)},
         {"infile", makeUnit<FileInUnit>("test.wav")},
         {"spk", makeUnit<SpeakerOutUnit>(system->createOutputStream(system->getDefaultOutputDevice()))},
         //{"pfl", makeUnit<PrintFilter>(stdscr)},
-        {"pmp", makeUnit<PumpOutUnit>()},
+        {"pfl", makeUnit<PrintFilter>(viewSystem->createView(), "pfl")},
+        //{"pmp", makeUnit<PumpOutUnit>()},
     };
     //connect({units.at("mic")}, {units.at("infile"), units.at("spk")});
     //connect({units.at("sin")}, {units.at("vfl")});
     //connect({units.at("vfl")}, {units.at("infile"), units.at("spk")});
-    connect(units, {"mic"}, {"infile", "spk"});
-    connect(units, {"sin", "pmp"}, {"vfl"});
-    connect(units, {"vfl"}, {"infile", "spk"});
+    //connect(units, {"mic"}, {"infile", "spk"});
+    //connect(units, {"sin", "pmp"}, {"vfl"});
+    //connect(units, {"vfl"}, {"infile", "spk"});
     //connect(units, {"pfl"}, {"spk"});
+	connect({units.at("mic")}, {units.at("pfl")});
+	connect({units.at("pfl")}, {units.at("infile"), units.at("spk")});
 
+	//auto view = viewSystem->createView();
     for(auto& unit : units) unit.second->start();
 
-    sleepms(1000);
+	/*
+	auto ptr = make_unique<boost::thread>([]() {
+		std::string input;
+		std::cin >> input;
+	});
+	*/
+
+	viewSystem->run();
     //units.at("sin")->stop();
 
-    sleepms(100000);
     //while(true)
     {
         //std::string input;

@@ -30,35 +30,35 @@
 
 namespace glut {
 
-void Init(int argc, char* argv[]) {
+inline void Init(int argc, char* argv[]) {
     glutInit(&argc, argv);
 }
 
-void InitDisplayMode(const unsigned int displayMode) {
+inline void InitDisplayMode(const unsigned int displayMode) {
     glutInitDisplayMode(displayMode);
 }
 
-void MainLoop() {
+inline void MainLoop() {
     glutMainLoop();
 }
 
-void IgnoreKeyRepeat(int ignore)
+inline void IgnoreKeyRepeat(int ignore)
 {
 	glutIgnoreKeyRepeat(ignore);
 }
 
-void SetOption(GLenum eWhat, int value)
+inline void SetOption(GLenum eWhat, int value)
 {
 	glutSetOption(eWhat, value);
 }
 
 #ifndef NO_FREEGLUT
-void LeaveMainLoop() {
+inline void LeaveMainLoop() {
     glutLeaveMainLoop();
 }
 #endif
 
-void IdleFunc(void(*callback)(void)) {
+inline void IdleFunc(void(*callback)(void)) {
     glutIdleFunc(callback);
 }
 
@@ -66,43 +66,52 @@ class Window {
     friend class Menu;
 private:
     int id;
-    static std::unordered_map<int, Window*> wins;
+
+    static std::unordered_map<int, Window*>& getWins()
+    {
+        static std::unordered_map<int, Window*> wins;
+        return wins;
+    }
 
     static void displayFuncSelect() {
-        wins[glutGetWindow()]->displayFunc();
+        getWins()[glutGetWindow()]->displayFunc();
     }
 
     static void reshapeFuncSelect(int width, int height) {
-        wins[glutGetWindow()]->reshapeFunc(width, height);
+        getWins()[glutGetWindow()]->reshapeFunc(width, height);
     }
 
     static void keyboardFuncSelect(unsigned char key, int x, int y) {
-        wins[glutGetWindow()]->keyboardFunc(key, x, y);
+        getWins()[glutGetWindow()]->keyboardFunc(key, x, y);
     }
 
 	static void keyboardUpFuncSelect(unsigned char key, int x, int y) {
-		wins[glutGetWindow()]->keyboardUpFunc(key, x, y);
+		getWins()[glutGetWindow()]->keyboardUpFunc(key, x, y);
 	}
 
     static void specialFuncSelect(int key, int x, int y) {
-        wins[glutGetWindow()]->specialFunc(key, x, y);
+        getWins()[glutGetWindow()]->specialFunc(key, x, y);
     }
 
     static void mouseFuncSelect(int button, int state, int x, int y) {
-        wins[glutGetWindow()]->mouseFunc(button, state, x, y);
+        getWins()[glutGetWindow()]->mouseFunc(button, state, x, y);
     }
 
     static void motionFuncSelect(int x, int y) {
-        wins[glutGetWindow()]->motionFunc(x, y);
+        getWins()[glutGetWindow()]->motionFunc(x, y);
     }
 
     static void passiveMotionFuncSelect(int x, int y) {
-        wins[glutGetWindow()]->passiveMotionFunc(x, y);
+        getWins()[glutGetWindow()]->passiveMotionFunc(x, y);
     }
+
+	static void timerFuncSelect(int idx) {
+		getWins()[glutGetWindow()]->timerFunc(idx);
+	}
 
 #ifndef NO_FREEGLUT
     static void closeFuncSelect() {
-        wins[glutGetWindow()]->closeFunc();
+        getWins()[glutGetWindow()]->closeFunc();
     }
 #endif
 
@@ -112,7 +121,7 @@ public:
         glutInitWindowPosition(x, y);
         id = glutCreateWindow(title);
 
-        wins[id] = this;
+        getWins()[id] = this;
 
         glutDisplayFunc(Window::displayFuncSelect);
         glutKeyboardFunc(Window::keyboardFuncSelect);
@@ -167,6 +176,11 @@ public:
         glutSetCursor(cursor);
     }
 
+	void createTimer(int mills, int idx) {
+		glutSetWindow(id);
+		glutTimerFunc(mills, Window::timerFuncSelect, idx);
+	}
+
 #ifndef NO_FREEGLUT
     void fullscreenToggle() {
         glutSetWindow(id);
@@ -218,6 +232,11 @@ public:
         glutPassiveMotionFunc(NULL);
     }
 
+	virtual void timerFunc(int idx) {
+		glutSetWindow(id);
+		//
+	}
+
 #ifndef NO_FREEGLUT
     virtual void closeFunc() {
         // disable events if not overridden
@@ -227,11 +246,11 @@ public:
 #endif
 
     ~Window() {
-		/* 20150803 glutDestroyWindow(id);‚ğƒRƒƒ“ƒgƒAƒEƒg
+		/* 20150803 glutDestroyWindow(id);ã‚’ã‚³ãƒ¡ãƒ³ãƒˆã‚¢ã‚¦ãƒˆ
 		   glut::SetOption(GLUT_ACTION_ON_WINDOW_CLOSE, GLUT_ACTION_GLUTMAINLOOP_RETURNS);
-		   ‚·‚é‚Æ‚±‚Ì•”•ª‚ÅÀsƒGƒ‰[B‚¨‚»‚ç‚­ƒVƒXƒeƒ€‘¤‚Å”jŠü‚³‚ê‚½ƒEƒBƒ“ƒhƒE‚ğ”jŠü‚·‚é‚±‚Æ‚É‚È‚éB
-		   ”jŠüÏ‚İ‚©’²‚×‚éŠÖ”‚ª•s–¾B‚¨‚»‚ç‚­•ú’u‚µ‚Ä‚àƒVƒXƒeƒ€‘¤‚ÅŸè‚É”jŠü‚µ‚Ä‚­‚ê‚é‚Ì‚ÅA
-		   ‚Æ‚è‚ ‚¦‚¸ƒRƒƒ“ƒgƒAƒEƒgB
+		   ã™ã‚‹ã¨ã“ã®éƒ¨åˆ†ã§å®Ÿè¡Œæ™‚ã‚¨ãƒ©ãƒ¼ã€‚ãŠãã‚‰ãã‚·ã‚¹ãƒ†ãƒ å´ã§ç ´æ£„ã•ã‚ŒãŸã‚¦ã‚£ãƒ³ãƒ‰ã‚¦ã‚’ç ´æ£„ã™ã‚‹ã“ã¨ã«ãªã‚‹ã€‚
+		   ç ´æ£„æ¸ˆã¿ã‹èª¿ã¹ã‚‹é–¢æ•°ãŒä¸æ˜ã€‚ãŠãã‚‰ãæ”¾ç½®ã—ã¦ã‚‚ã‚·ã‚¹ãƒ†ãƒ å´ã§å‹æ‰‹ã«ç ´æ£„ã—ã¦ãã‚Œã‚‹ã®ã§ã€
+		   ã¨ã‚Šã‚ãˆãšã‚³ãƒ¡ãƒ³ãƒˆã‚¢ã‚¦ãƒˆã€‚
 		*/
 		//glutDestroyWindow(id);
     }
@@ -241,17 +260,21 @@ class Menu {
 private:
     int id;
 
-    static std::unordered_map<int, Menu*> menus;
+    static std::unordered_map<int, Menu*>& getMenus()
+    {
+        static std::unordered_map<int, Menu*> menus;
+        return menus;
+    }
 
     static void menuFunSelect(int value) {
-        menus[glutGetMenu()]->selected(value);
+        getMenus()[glutGetMenu()]->selected(value);
     }
 
 public:
     Menu(Window& window) {
         glutSetWindow(window.id);
         id = glutCreateMenu(Menu::menuFunSelect);
-        menus[id] = this;
+        getMenus()[id] = this;
     }
 
     void addEntry(const char* label, int value) {
@@ -266,9 +289,6 @@ public:
 
     virtual void selected(int value) = 0;
 };
-
-std::unordered_map<int, Window*> Window::wins;
-std::unordered_map<int, Menu*> Menu::menus;
 
 }
 
