@@ -12,20 +12,19 @@ class PrintFilter : public Unit
 {
 private:
 	std::shared_ptr<View> view_;
-	View::UID uid_;
+    int viewIndex_;
 
 public:
-	PrintFilter(const std::shared_ptr<View>& view, const std::string& name)
-		: view_(view), uid_(view->issueGroup(name))
+	PrintFilter(const std::shared_ptr<View>& view, int index)
+		: view_(view), viewIndex_(index)
 	{}
 
 	void inputImpl(const PCMWave& wave)
 	{
-		view_->updateLevelMeter(uid_, *wave.begin());
+		view_->updateLevelMeter(viewIndex_, *wave.begin());
 		send(wave);
 	}
 };
-
 
 /*
 
@@ -85,19 +84,32 @@ void connect(const std::unordered_map<std::string, UnitPtr>& units, const std::v
 }
 */
 
+
+
 int main(int argc, char **argv)
 {
-    UnitManager manager;
     std::shared_ptr<AudioSystem> system(std::make_shared<PAAudioSystem>());
-	std::shared_ptr<ViewSystem> viewSystem(std::make_shared<GlutViewSystem>(manager, argc, argv));
+	std::shared_ptr<ViewSystem> viewSystem(std::make_shared<GlutViewSystem>(argc, argv));
 
+    auto view = viewSystem->createView(1);
+
+    UnitManager manager;
     manager.makeUnit<PumpOutUnit>("pmp0");
     manager.makeUnit<MicOutUnit>("mic0", system->createInputStream(system->getDefaultInputDevice()));
+    manager.makeUnit<VolumeFilter>("vol0");
+    manager.makeUnit<PrintFilter>("pfl0", view, 0);
     manager.makeUnit<SpeakerInUnit>("spk", system->createOutputStream(system->getDefaultOutputDevice()));
-    manager.makeUnit<PrintFilter>("pfl0", viewSystem->createView(), "pfl0");
 
-    manager.connect({"pmp0", "mic0"}, {"pfl0"});
+    manager.connect({"mic0"}, {"vol0"});
+    manager.connect({"pmp0", "vol0"}, {"pfl0"});
     manager.connect({"pfl0"}, {"spk"});
+
+    {
+        GroupInfo info;
+        info.name = "mic0";
+        info.volume = std::dynamic_pointer_cast<VolumeFilter>(manager.getUnit("vol0").lock());
+        view->setGroupInfo(0, info);
+    }
 
     manager.startAll();
     viewSystem->run();

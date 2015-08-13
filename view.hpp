@@ -3,6 +3,7 @@
 #define ___VIEW_HPP___
 
 #include "pcmwave.hpp"
+#include "units.hpp"
 #include <string>
 #include <vector>
 #include <memory>
@@ -16,21 +17,38 @@ public:
 	ViewSystem(){}
 	virtual ~ViewSystem(){}
 
-	virtual ViewPtr createView() = 0;
+	virtual ViewPtr createView(int groupSize) = 0;
 	virtual void run() = 0;
+};
+
+struct GroupInfo
+{
+    std::string name;
+    std::weak_ptr<VolumeFilter> volume;
 };
 
 class View
 {
-public:
-    using UID = int;
+private:
+    std::vector<GroupInfo> groupInfoList_;
+
+protected:
+    const GroupInfo& getGroupInfo(int index) const { return groupInfoList_.at(index); }
 
 public:
-    View(){}
+    View(int groupSize)
+        : groupInfoList_(groupSize)
+    {}
     virtual ~View(){}
 
-    virtual UID issueGroup(const std::string& name) = 0;
-    virtual void updateLevelMeter(UID uid, const PCMWave::Sample& sample) = 0;
+    // un-mutexed function
+    // can be called only when init
+    void setGroupInfo(int index, const GroupInfo& info)
+    {
+        groupInfoList_.at(index) = info;
+    }
+
+    virtual void updateLevelMeter(int index, const PCMWave::Sample& sample) = 0;
 };
 
 #endif

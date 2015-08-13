@@ -12,13 +12,12 @@ class GlutViewSystem : public ViewSystem
 {
 private:
 	static bool isFirst_;
-    UnitManager& unitManager_;
 
 public:
-	GlutViewSystem(UnitManager& unitManager, int argc, char **argv);
+	GlutViewSystem(int argc, char **argv);
 	~GlutViewSystem();
 
-	ViewPtr createView();
+	ViewPtr createView(int groupSize);
 	void run();
 };
 
@@ -52,20 +51,13 @@ class GlutView : public View, public glut::Window
 private:
 	const double LEVEL_METER_DB_MIN = -60;
 
-    UnitManager& unitManager_;
-
-    struct GroupData
+    struct GroupMutexedData
     {
-        std::string name;
 		std::pair<double, double> level;
-
-		GroupData(const std::string& name_)
-			: name(name_)
-		{}
     };
-    std::vector<GroupData> data_;
+    std::vector<GroupMutexedData> data_;
+    int groupMask_;
     boost::mutex mtx_;
-	bool hasFinished_;
 
 private:
 	template<class Render>
@@ -77,6 +69,7 @@ private:
 	}
 	void drawLine(double x0, double y0, double x1, double y1, const Color& color);
 	void drawRectangle(const Rect& rect, const Color& color);
+    void drawString(double x0, double y0, const Color& color, const std::string& msg);
 
 	void displayFunc() override;
 	void reshapeFunc(int w, int h) override;
@@ -86,11 +79,10 @@ private:
 	void closeFunc() override;
 
 public:
-    GlutView(UnitManager& unitManager);
+    GlutView(int groupSize);
     ~GlutView(){}
 
-    UID issueGroup(const std::string& name) override;
-    void updateLevelMeter(UID id, const PCMWave::Sample& sample) override;
+    void updateLevelMeter(int index, const PCMWave::Sample& sample) override;
 };
 
 #endif

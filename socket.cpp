@@ -36,7 +36,7 @@ void Unit::Socket::onRecv(const UnitPtr& unit, const PCMWave& src)
     // 死んでる奴は(isAlive() == false)はRecvとみなす
     if(std::all_of(pool_.begin(), pool_.end(),
         [](const std::pair<UnitPtr, const std::queue<PCMWave>>& item) {
-            return !(item.first->isAlive() && item.second.empty());
+            return !item.first->isAlive() || !item.second.empty();
         }))
     {
         emitPool();

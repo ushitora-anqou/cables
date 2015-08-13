@@ -47,15 +47,38 @@ public:
     }
 };
 
+class OnOffFilter : public Unit
+{
+private:
+    bool isOn_;
+
+public:
+    OnOffFilter()
+        : isOn_(true)
+    {}
+
+    void inputImpl(const PCMWave& wave)
+    {
+        if(isOn_)   send(wave);
+    }
+
+    void turn() { isOn_ = isOn_ ? false : true; }
+};
+
 class VolumeFilter : public Unit
 {
 private:
-    double rate_;
+    boost::mutex mtx_;
+    int rate_;  // no effect = 100
 
 public:
-    VolumeFilter(double rate)
+    VolumeFilter(int rate = 100)
         : rate_(rate)
     {}
+
+    void setRate(int rate);
+    void addRate(int interval);
+    int getRate();
 
     void inputImpl(const PCMWave& wave);
 };

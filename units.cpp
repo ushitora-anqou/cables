@@ -33,13 +33,33 @@ PCMWave SinOutUnit::update()
 
 ///
 
+void VolumeFilter::setRate(int rate)
+{
+    assert(rate >= 0);
+    boost::mutex::scoped_lock lock(mtx_);
+    rate_ = rate;
+}
+
+void VolumeFilter::addRate(int interval)
+{
+    boost::mutex::scoped_lock lock(mtx_);
+    rate_ += interval;
+    rate_ = std::max(rate_, 0);
+}
+
+int VolumeFilter::getRate()
+{
+    boost::mutex::scoped_lock lock(mtx_);
+    return rate_;
+}
+
 void VolumeFilter::inputImpl(const PCMWave& wave)
 {
     PCMWave ret;
     std::transform(
         wave.begin(), wave.end(),
         ret.begin(),
-        [this](const PCMWave::Sample& s) { return s * rate_; }
+        [this](const PCMWave::Sample& s) { return s * (rate_ / 100.0); }
     );
     send(ret);
 }
