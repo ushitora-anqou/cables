@@ -3,6 +3,7 @@
 #include "units.hpp"
 #include "unitmanager.hpp"
 #include "glutview.hpp"
+#include <boost/regex.hpp>
 #include <boost/algorithm/string.hpp>
 #include <boost/lexical_cast.hpp>
 #include <cmath>
@@ -137,7 +138,7 @@ int main(int argc, char **argv)
     std::vector<std::string> outputUnitNames;
     indexedForeach(inputDevices, [&system, &manager, &view, &outputUnitNames](int i, const AudioDevicePtr& dev) {
         const std::string&
-            devName = dev->name(),
+            devName = boost::regex_replace(dev->name(), boost::regex("\\s+"), "_", boost::format_all),
             micName = "mic_" + devName,
             volumeName = "vol_" + devName,
             printName = "pfl_" + devName,
