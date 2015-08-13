@@ -111,6 +111,9 @@ void GlutView::displayFunc()
 
             drawString(LEVEL_METER_BAR_LENGTH + 20, y + LINE_HEIGHT + 6, Color(0, 0, 0),
                 boost::lexical_cast<std::string>(getGroupInfo(i).volume.lock()->getRate()));
+
+            if(!getGroupInfo(i).mic.lock()->isAlive())
+                drawRectangle(Rect(0, y, LEVEL_METER_BAR_LENGTH, y + LINE_HEIGHT * 2), Color(192, 192, 192));
 		}
 	});
 }
@@ -134,7 +137,11 @@ void GlutView::keyboardFunc(unsigned char key, int x, int y)
     static const std::unordered_map<unsigned char, boost::function<void(int)>> groupProcs = {
         {'o'   , [this](int index) { getGroupInfo(index).volume.lock()->addRate( 5); }},
         {'l'   , [this](int index) { getGroupInfo(index).volume.lock()->addRate(-5); }},
-        {'s'   , [this](int index) { getGroupInfo(index).mic.lock()->stop(); }},
+        {'s'   , [this](int index) {
+            auto& mic = *getGroupInfo(index).mic.lock();
+            if(mic.isAlive())   mic.stop();
+            else    mic.start();
+        }},
     };
     auto it = groupProcs.find(key);
     if(it != groupProcs.end()){

@@ -36,7 +36,10 @@ struct Color
 	double red, green, blue;
 
 	Color(){}
-	Color(double red_, double green_, double blue_)
+    Color(int red_, int green_, int blue_)  // max : 255(0xff)
+        : red(red_ / 255.0), green(green_ / 255.0), blue(blue_ / 255.0)
+    {}
+	Color(double red_, double green_, double blue_) // max : 1.0
 		: red(red_), green(green_), blue(blue_)
 	{}
 

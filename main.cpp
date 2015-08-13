@@ -100,8 +100,8 @@ int main(int argc, char **argv)
     manager.makeUnit<PrintFilter>("pfl0", view, 0);
     manager.makeUnit<SpeakerInUnit>("spk", system->createOutputStream(system->getDefaultOutputDevice()));
 
-    manager.connect({"mic0"}, {"vol0"});
-    manager.connect({"pmp0", "vol0"}, {"pfl0"});
+    manager.connect({"pmp0", "mic0"}, {"vol0"});
+    manager.connect({"vol0"}, {"pfl0"});
     manager.connect({"pfl0"}, {"spk"});
 
     {

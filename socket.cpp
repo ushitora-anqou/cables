@@ -86,8 +86,7 @@ bool Unit::isAlive()
 void Unit::start()
 {
     boost::upgrade_lock<boost::shared_mutex> readLock(mtx_);
-    assert(!isAlive_);
-    {
+    if(!isAlive_){
         boost::upgrade_to_unique_lock<boost::shared_mutex> writeLock(readLock);
         isAlive_ = true;
         startImpl();
@@ -97,8 +96,7 @@ void Unit::start()
 void Unit::stop()
 {
     boost::upgrade_lock<boost::shared_mutex> readLock(mtx_);
-    assert(isAlive_);
-    {
+    if(isAlive_){
         boost::upgrade_to_unique_lock<boost::shared_mutex> writeLock(readLock);
         isAlive_ = false;
         stopImpl();
@@ -120,6 +118,7 @@ void Unit::send(const PCMWave& wave)
 
 void ThreadOutUnit::startImpl()
 {
+    hasFinished_ = false;
     proc_ = make_unique<boost::thread>(
         [this](){
             construct();
