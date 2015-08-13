@@ -107,7 +107,8 @@ int main(int argc, char **argv)
     {
         GroupInfo info;
         info.name = "mic0";
-        info.volume = std::dynamic_pointer_cast<VolumeFilter>(manager.getUnit("vol0").lock());
+        info.mic = manager.getCastUnit<MicOutUnit>("mic0");
+        info.volume = manager.getCastUnit<VolumeFilter>("vol0");
         view->setGroupInfo(0, info);
     }
 

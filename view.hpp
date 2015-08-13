@@ -24,6 +24,7 @@ public:
 struct GroupInfo
 {
     std::string name;
+    std::weak_ptr<MicOutUnit> mic;
     std::weak_ptr<VolumeFilter> volume;
 };
 

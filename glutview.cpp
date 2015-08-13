@@ -134,6 +134,7 @@ void GlutView::keyboardFunc(unsigned char key, int x, int y)
     static const std::unordered_map<unsigned char, boost::function<void(int)>> groupProcs = {
         {'o'   , [this](int index) { getGroupInfo(index).volume.lock()->addRate( 5); }},
         {'l'   , [this](int index) { getGroupInfo(index).volume.lock()->addRate(-5); }},
+        {'s'   , [this](int index) { getGroupInfo(index).mic.lock()->stop(); }},
     };
     auto it = groupProcs.find(key);
     if(it != groupProcs.end()){

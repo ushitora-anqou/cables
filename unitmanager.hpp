@@ -45,6 +45,12 @@ public:
         }
     }
 
+    template<class T>
+    std::weak_ptr<T> getCastUnit(const std::string& name)
+    {
+        return std::dynamic_pointer_cast<T>(getUnit(name).lock());
+    }
+
     std::weak_ptr<Unit> getUnit(const std::string& name)
     {
         return units_.at(name);
