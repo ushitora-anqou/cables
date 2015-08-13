@@ -91,11 +91,9 @@ void GlutView::displayFunc()
 		for(int i = 0;i < data_.size();i++){
             auto& data = data_.at(i);
 			auto& ldb = data.level.first, rdb = data.level.second;
-			const int y = i * LINE_HEIGHT;
-			drawRectangle(Rect(0, y, LEVEL_METER_BAR_LENGTH, y + LINE_HEIGHT), Color(255, 0, 0));
-			drawRectangle(Rect(0, y + LINE_HEIGHT, LEVEL_METER_BAR_LENGTH, y + LINE_HEIGHT * 2), Color(255, 0, 0));
-			drawRectangle(Rect(0, y, LEVEL_METER_BAR_LENGTH * 0.6, y + LINE_HEIGHT), Color(0, 0, 255));
-			drawRectangle(Rect(0, y + LINE_HEIGHT, LEVEL_METER_BAR_LENGTH * 0.6, y + LINE_HEIGHT * 2), Color(0, 0, 255));
+			const int y = i * LINE_HEIGHT * 2;
+			drawRectangle(Rect(0, y, LEVEL_METER_BAR_LENGTH, y + LINE_HEIGHT * 2), Color(255, 0, 255));
+			drawRectangle(Rect(0, y, LEVEL_METER_BAR_LENGTH * 0.6, y + LINE_HEIGHT * 2), Color(0, 255, 255));
 
 			drawRectangle(Rect(
 				0                                                      , y,
@@ -114,6 +112,8 @@ void GlutView::displayFunc()
 
             if(!getGroupInfo(i).mic.lock()->isAlive())
                 drawRectangle(Rect(0, y, LEVEL_METER_BAR_LENGTH, y + LINE_HEIGHT * 2), Color(192, 192, 192));
+
+            drawString(0, y + LINE_HEIGHT + 6, Color(0, 0, 0), getGroupInfo(i).name);
 		}
 	});
 }

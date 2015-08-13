@@ -17,6 +17,8 @@ public:
     ~PAAudioDevice(){}
 
     std::string name() const { return info_.name; }
+    int inputChannel() const { return info_.maxInputChannels; }
+    int outputChannel() const { return info_.maxOutputChannels; }
 
     PaDeviceIndex getIndex() const { return devIndex_; }
     const PaDeviceInfo& getInfo() const { return info_; }

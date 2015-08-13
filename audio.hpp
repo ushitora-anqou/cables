@@ -25,6 +25,8 @@ public:
     virtual ~AudioDevice(){}
 
     virtual std::string name() const = 0;
+    virtual int inputChannel() const = 0;
+    virtual int outputChannel() const = 0;
 };
 using AudioDevicePtr = std::shared_ptr<AudioDevice>;
 
