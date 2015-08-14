@@ -113,4 +113,22 @@ public:
     void inputImpl(const PCMWave& wave) { stream_->write(wave); }
 };
 
+class PrintFilter : public Unit
+{
+private:
+	std::shared_ptr<View> view_;
+    int viewIndex_;
+
+public:
+	PrintFilter(const std::shared_ptr<View>& view, int index)
+		: view_(view), viewIndex_(index)
+	{}
+
+	void inputImpl(const PCMWave& wave)
+	{
+		view_->updateLevelMeter(viewIndex_, *wave.begin());
+		send(wave);
+	}
+};
+
 #endif
