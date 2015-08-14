@@ -1,4 +1,5 @@
 #include "units.hpp"
+#include "view.hpp"
 #include "helper.hpp"
 #include <cmath>
 #include <algorithm>
@@ -86,3 +87,14 @@ PCMWave MicOutUnit::update()
     return std::move(stream_->read());
 }
 
+///
+
+PrintFilter::PrintFilter(const std::shared_ptr<View>& view, int index)
+    : view_(view), viewIndex_(index)
+{}
+
+void PrintFilter::inputImpl(const PCMWave& wave)
+{
+    view_->updateLevelMeter(viewIndex_, *wave.begin());
+    send(wave);
+}

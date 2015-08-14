@@ -3,9 +3,7 @@
 #include "units.hpp"
 #include "unitmanager.hpp"
 #include "glutview.hpp"
-#include <boost/regex.hpp>
 #include <boost/algorithm/string.hpp>
-#include <boost/lexical_cast.hpp>
 #include <iostream>
 #include <unordered_map>
 
@@ -47,7 +45,8 @@ int main(int argc, char **argv)
     // make input unit e.g. speaker
     std::vector<std::string> inputUnitNames;
     indexedForeach(outputDevices, [&system, &manager, &inputUnitNames](int i, const AudioDevicePtr& dev) {
-        const std::string speakerName = "spk_" + dev->name();
+        const std::string speakerName = "spk_" + replaceSpaces("_", dev->name()) + "_"
+                    + toString(std::count(inputUnitNames.begin(), inputUnitNames.end(), speakerName));
         manager.makeUnit<SpeakerInUnit>(speakerName, system->createOutputStream(dev));
         inputUnitNames.push_back(speakerName);
     });
@@ -57,8 +56,9 @@ int main(int argc, char **argv)
     auto view = viewSystem->createView(inputDevices.size());
     std::vector<std::string> outputUnitNames;
     indexedForeach(inputDevices, [&system, &manager, &view, &outputUnitNames](int i, const AudioDevicePtr& dev) {
-        const std::string&
-            devName = boost::regex_replace(dev->name(), boost::regex("\\s+"), "_", boost::format_all),
+        const std::string
+            devName = replaceSpaces("_", dev->name()) + "_"
+                + toString(std::count(outputUnitNames.begin(), outputUnitNames.end(), devName)),
             micName = "mic_" + devName,
             volumeName = "vol_" + devName,
             printName = "pfl_" + devName,

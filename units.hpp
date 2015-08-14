@@ -9,6 +9,8 @@
 #include <memory>
 #include <vector>
 
+class View;
+
 class PumpOutUnit : public WaitThreadOutUnit
 {
 public:
@@ -120,15 +122,9 @@ private:
     int viewIndex_;
 
 public:
-	PrintFilter(const std::shared_ptr<View>& view, int index)
-		: view_(view), viewIndex_(index)
-	{}
+	PrintFilter(const std::shared_ptr<View>& view, int index);
 
-	void inputImpl(const PCMWave& wave)
-	{
-		view_->updateLevelMeter(viewIndex_, *wave.begin());
-		send(wave);
-	}
+	void inputImpl(const PCMWave& wave);
 };
 
 #endif

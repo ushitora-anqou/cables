@@ -2,8 +2,10 @@
 #ifndef ___HELPER_HPP___
 #define ___HELPER_HPP___
 
+#include <boost/regex.hpp>
 #include <boost/preprocessor.hpp>
 #include <boost/thread.hpp>
+#include <boost/lexical_cast.hpp>
 #include <cmath>
 #include <cassert>
 #include <chrono>
@@ -74,6 +76,17 @@ inline std::chrono::system_clock::time_point getNowTime()
 inline int getInterval(const std::chrono::system_clock::time_point& beg, const std::chrono::system_clock::time_point& fin)
 {
     return std::chrono::duration_cast<std::chrono::milliseconds>(fin - beg).count();
+}
+
+inline std::string replaceSpaces(const std::string& dlm, const std::string& src)
+{
+    return boost::regex_replace(src, boost::regex("\\s+"), dlm, boost::format_all);
+}
+
+template<class T>
+inline std::string toString(const T& src)
+{
+    return boost::lexical_cast<std::string>(src);
 }
 
 struct Rect
