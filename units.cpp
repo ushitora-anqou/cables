@@ -1,4 +1,5 @@
 #include "units.hpp"
+#include "helper.hpp"
 #include <cmath>
 #include <algorithm>
 
@@ -59,7 +60,7 @@ void VolumeFilter::inputImpl(const PCMWave& wave)
     std::transform(
         wave.begin(), wave.end(),
         ret.begin(),
-        [this](const PCMWave::Sample& s) { return s * (rate_ / 100.0); }
+        [this](const PCMWave::Sample& s) { return s * divd(rate_, 100); }
     );
     send(ret);
 }

@@ -45,18 +45,22 @@ GlutView::GlutView(int groupSize)
 
 void GlutView::updateLevelMeter(int index, const PCMWave::Sample& sample)
 {
-	double al = std::abs(sample.left), ar = std::abs(sample.right),
-		   ldb = al == 0 ? LEVEL_METER_DB_MIN : 20 * log10(al),
-		   rdb = ar == 0 ? LEVEL_METER_DB_MIN : 20 * log10(ar);
-	auto db = std::make_pair(ldb, rdb);
+	auto db = std::make_pair(
+        sample.left  == 0 ? LEVEL_METER_DB_MIN : calcDB(sample.left),
+        sample.right == 0 ? LEVEL_METER_DB_MIN : calcDB(sample.right));
 
 	boost::mutex::scoped_lock lock(mtx_);
 	data_.at(index).level = db;
 }
 
+void GlutView::applyColor(const Color& color)
+{
+    glColor3d(divd(color.r, 0xff), divd(color.g, 0xff), divd(color.b, 0xff));
+}
+
 void GlutView::drawLine(double x0, double y0, double x1, double y1, const Color& color)
 {
-	color();
+    applyColor(color);
 	glBegin(GL_LINE_LOOP);
 	glVertex2d(x0, y0);
 	glVertex2d(x1, y1);
@@ -65,7 +69,7 @@ void GlutView::drawLine(double x0, double y0, double x1, double y1, const Color&
 
 void GlutView::drawRectangle(const Rect& rect, const Color& color)
 {
-	color();
+    applyColor(color);
 	glBegin(GL_QUADS);
 	glVertex2d(rect.left, rect.top);
 	glVertex2d(rect.left, rect.bottom);
@@ -74,11 +78,40 @@ void GlutView::drawRectangle(const Rect& rect, const Color& color)
 	glEnd();
 }
 
-void GlutView::drawString(double x0, double y0, const Color& color, const std::string& msg)
+void GlutView::drawString(double x0, double y0, const std::string& msg, const Color& color)
 {
-    color();
+    applyColor(color);
     glRasterPos2d(x0, y0);
     glutBitmapString(GLUT_BITMAP_HELVETICA_12, reinterpret_cast<const unsigned char *>(msg.c_str()));
+}
+
+void GlutView::drawLevelMeterBox(int index, int ch, double widthRatio, const Color& color)
+{
+    const int
+        x = LEVEL_METER_LEFT_MARGIN,
+        y = calcY(index, ch),
+        w = LEVEL_METER_BAR_LENGTH * widthRatio;
+    drawRectangle(Rect(x, y, x + w, y + LEVEL_METER_BAR_HEIGHT), color);
+}
+
+void GlutView::drawLevelMeterBack(int index, double widthRatio, const Color& color)
+{
+    drawLevelMeterBox(index, 0, widthRatio, color);
+    drawLevelMeterBox(index, 1, widthRatio, color);
+}
+
+void GlutView::drawSelectedUnitMark(int index)
+{
+    const int
+        x = 0,
+        y = calcY(index),
+        w = LEVEL_METER_LEFT_MARGIN;
+    drawRectangle(Rect(x, y, x + w, y + LEVEL_METER_BAR_HEIGHT * 2), Color::yellow());
+}
+
+void GlutView::drawUnitString(int index, int x, const std::string& msg, const Color& color)
+{
+    drawString(x, calcY(index, 1) + 6, msg, color);
 }
 
 void GlutView::displayFunc()
@@ -86,35 +119,31 @@ void GlutView::displayFunc()
 	draw([this]() {
 		boost::mutex::scoped_lock lock(mtx_);
 
-		static const double PIXEL_PER_DB = 8, LEVEL_METER_BAR_LENGTH = -LEVEL_METER_DB_MIN * PIXEL_PER_DB;
-		static const int LINE_HEIGHT = 25;
-		for(int i = 0;i < data_.size();i++){
-            auto& data = data_.at(i);
-			auto& ldb = data.level.first, rdb = data.level.second;
-			const int y = i * LINE_HEIGHT * 2;
-			drawRectangle(Rect(0, y, LEVEL_METER_BAR_LENGTH, y + LINE_HEIGHT * 2), Color(255, 0, 255));
-			drawRectangle(Rect(0, y, LEVEL_METER_BAR_LENGTH * 0.6, y + LINE_HEIGHT * 2), Color(0, 255, 255));
+        indexedForeach(data_, [this](int i, GroupMutexedData& data) {
+            // draw level meter
+            auto& ldb = data.level.first, rdb = data.level.second;
+            // background
+            drawLevelMeterBack(i,   1, Color::magenta());
+            drawLevelMeterBack(i, 0.6, Color::cyan());
+            // meter
+            drawLevelMeterBox(i, 0, 1 - ldb / LEVEL_METER_DB_MIN, Color::green());
+            drawLevelMeterBox(i, 1, 1 - rdb / LEVEL_METER_DB_MIN, Color::green());
 
-			drawRectangle(Rect(
-				0                                                      , y,
-				LEVEL_METER_BAR_LENGTH * (1 - ldb / LEVEL_METER_DB_MIN), y + LINE_HEIGHT),
-				Color(0, 255, 0));
-			drawRectangle(Rect(
-				0                                                      , y + LINE_HEIGHT,
-				LEVEL_METER_BAR_LENGTH * (1 - rdb / LEVEL_METER_DB_MIN), y + LINE_HEIGHT * 2),
-				Color(0, 255, 0));
-
-            if(groupMask_ & (1 << i))
-                drawRectangle(Rect(LEVEL_METER_BAR_LENGTH + 10, y, LEVEL_METER_BAR_LENGTH + 50, y + LINE_HEIGHT * 2), Color(255, 255, 0));
-
-            drawString(LEVEL_METER_BAR_LENGTH + 20, y + LINE_HEIGHT + 6, Color(0, 0, 0),
-                boost::lexical_cast<std::string>(getGroupInfo(i).volume.lock()->getRate()));
-
+            // alive
             if(!getGroupInfo(i).mic.lock()->isAlive())
-                drawRectangle(Rect(0, y, LEVEL_METER_BAR_LENGTH, y + LINE_HEIGHT * 2), Color(192, 192, 192));
+                drawLevelMeterBack(i, 1, Color::gray());
 
-            drawString(0, y + LINE_HEIGHT + 6, Color(0, 0, 0), getGroupInfo(i).name);
-		}
+            // selected unit highlight
+            if(groupMask_ & (1 << i))   drawSelectedUnitMark(i);
+
+            // volume
+            drawUnitString(i, WINDOW_WIDTH - LEVEL_METER_RIGHT_MARGIN + 20,
+                boost::lexical_cast<std::string>(getGroupInfo(i).volume.lock()->getRate()),
+                Color::black());
+
+            // name
+            drawUnitString(i, 0, getGroupInfo(i).name, Color::black());
+		});
 	});
 }
 

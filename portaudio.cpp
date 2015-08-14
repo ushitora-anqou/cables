@@ -36,7 +36,6 @@ void PAAudioStream::stop()
 PCMWave PAAudioStream::read()
 {
     std::array<float, PCMWave::BUFFER_SIZE> buffer;
-    if(Pa_IsStreamStopped(stream_))  return PCMWave();
     assert(Pa_ReadStream(stream_, buffer.data(), PCMWave::BUFFER_SIZE) == paNoError);
     PCMWave ret;
     std::transform(buffer.begin(), buffer.end(), ret.begin(),
@@ -47,17 +46,8 @@ PCMWave PAAudioStream::read()
 #include <iostream>
 void PAAudioStream::write(const PCMWave& wave)
 {
-    std::array<float, PCMWave::BUFFER_SIZE * 2> buffer;
-    auto it = buffer.begin();
-    for(auto& s : wave){
-        *(it++) = s.left;
-        *(it++) = s.right;
-    }
-
-    if(Pa_IsStreamStopped(stream_))  return;
-    auto ret = Pa_WriteStream(stream_, buffer.data(), PCMWave::BUFFER_SIZE);
-    if(!(ret == paNoError || ret == paOutputUnderflowed))   std::cout << "ERROR_WRITE : " << ret << std::endl;
-    // assert
+    auto ret = Pa_WriteStream(stream_, wave2float(wave).data(), PCMWave::BUFFER_SIZE);
+    assert(ret == paNoError || ret == paOutputUnderflowed);
 }
 
 ///
@@ -67,7 +57,8 @@ PAAudioSystem::PAAudioSystem()
     if(isFirst_){
         isFirst_ = false;
         Pa_Initialize();
-        static auto cleaner = []() { Pa_Terminate(); };
+        // clean portaudio system when exit
+        static const auto cleaner = []() { Pa_Terminate(); };
         atexit(cleaner);
     }
 }

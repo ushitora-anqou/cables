@@ -85,6 +85,7 @@ bool Unit::isAlive()
 
 void Unit::start()
 {
+    // guarantee this unit is alive in the following impl function call
     boost::upgrade_lock<boost::shared_mutex> readLock(mtx_);
     if(!isAlive_){
         boost::upgrade_to_unique_lock<boost::shared_mutex> writeLock(readLock);
@@ -95,6 +96,7 @@ void Unit::start()
 
 void Unit::stop()
 {
+    // guarantee this unit is alive in the following impl function call
     boost::upgrade_lock<boost::shared_mutex> readLock(mtx_);
     if(isAlive_){
         boost::upgrade_to_unique_lock<boost::shared_mutex> writeLock(readLock);
