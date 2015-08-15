@@ -46,8 +46,10 @@ GlutView::GlutView(int groupSize)
 void GlutView::updateLevelMeter(int index, const PCMWave::Sample& sample)
 {
 	auto db = std::make_pair(
-        sample.left  == 0 ? LEVEL_METER_DB_MIN : calcDB(sample.left),
-        sample.right == 0 ? LEVEL_METER_DB_MIN : calcDB(sample.right));
+        std::max(static_cast<double>(LEVEL_METER_DB_MIN),
+            sample.left  == 0 ? LEVEL_METER_DB_MIN : calcDB(sample.left)),
+        std::max(static_cast<double>(LEVEL_METER_DB_MIN),
+            sample.right == 0 ? LEVEL_METER_DB_MIN : calcDB(sample.right)));
 
 	boost::mutex::scoped_lock lock(mtx_);
 	data_.at(index).level = db;
@@ -142,7 +144,7 @@ void GlutView::displayFunc()
                 Color::black());
 
             // name
-            drawUnitString(i, 0, getGroupInfo(i).name, Color::black());
+            drawUnitString(i, LEVEL_METER_LEFT_MARGIN, getGroupInfo(i).name, Color::black());
 		});
 	});
 }
