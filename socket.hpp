@@ -63,10 +63,13 @@ public:
     virtual ~Unit();
 
     bool isAlive();
+    virtual bool canSendToNext() { return isAlive(); }
+
     void start();
     void stop();
     void input(const PCMWave& wave);
 
+//protected:    //TODO
     virtual void startImpl(){}
     virtual void stopImpl(){}
     virtual void inputImpl(const PCMWave& wave){}

@@ -9,3 +9,5 @@ log.txt
 *.un~
 *.dll
 Makefile
+todo.txt
+*.d

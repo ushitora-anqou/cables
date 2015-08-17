@@ -7,6 +7,26 @@
 #include <iostream>
 #include <unordered_map>
 
+#include "asio_network.hpp"
+
+int main()
+{
+    std::shared_ptr<AudioSystem> audio(std::make_shared<PAAudioSystem>());
+    std::shared_ptr<AsioNetworkSystem> network(std::make_shared<AsioNetworkSystem>());
+    UnitManager manager;
+    manager.makeUnit<MicOutUnit>("mic", audio->createInputStream(audio->getDefaultInputDevice()));
+    manager.makeUnit<AsioNetworkRecvUnit>("recv", network->getSystemInfo(), 12345);
+    manager.makeUnit<SpeakerInUnit>("spk", audio->createOutputStream(audio->getDefaultOutputDevice()));
+    manager.connect({"mic", "recv"}, {"spk"});
+
+    // run
+    manager.startAll();
+    sleepms(5000);
+    manager.stopAll();
+}
+
+
+/*
 int main(int argc, char **argv)
 {
     std::shared_ptr<AudioSystem> system(std::make_shared<PAAudioSystem>());
@@ -90,3 +110,4 @@ int main(int argc, char **argv)
     viewSystem->run();
     manager.stopAll();
 }
+*/

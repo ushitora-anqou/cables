@@ -1,16 +1,20 @@
+TARGET=cables
 CXX=g++
-CPPS=glutview.cpp main.cpp units.cpp wavefile.cpp socket.cpp portaudio.cpp
+CPPS=glutview.cpp main.cpp units.cpp wavefile.cpp socket.cpp portaudio.cpp asio_network.cpp
 OBJS=$(CPPS:.cpp=.o)
-LIB=-lboost_thread -lboost_system -lboost_regex -lportaudio -lncurses -lglut -lGLU -lGL -lm
+DEPS=$(CPPS:.cpp=.d)
+LIB=-lboost_thread -lboost_system -lboost_regex -lboost_serialization -lportaudio -lncurses -lglut -lGLU -lGL -lm
 FLAGS=-g -O0 -std=c++11
 
-cables: $(OBJS)
+$(TARGET): $(OBJS)
 	$(CXX) -o $@ $(OBJS) $(LIB)
 
-.cpp.o:
-	$(CXX) $(FLAGS) -c $< -o $(<:.cpp=.o)
+%.o: %.cpp
+	$(CXX) $(FLAGS) -c -MMD -MP $<
 
 clean: 
-	@rm -f $(OBJS)
+	@rm -f $(OBJS) $(DEPS) $(TARGET)
 
-all: clean cables
+all: clean $(TARGET)
+
+-include $(DEPS)

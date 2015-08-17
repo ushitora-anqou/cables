@@ -62,6 +62,9 @@ public:
     PCMWave(){}
     ~PCMWave(){}
 
+    Buffer& get() { return buffer_; }
+    const Buffer& get() const { return buffer_; }
+
     Sample& at(size_t index) { return buffer_.at(index); }
     const Sample& at(size_t index) const { return buffer_.at(index); }
 

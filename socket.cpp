@@ -33,10 +33,13 @@ void Unit::Socket::onRecv(const UnitPtr& unit, const PCMWave& src)
     pool_.at(unit).push(src);
 
     // 全てのUnitからRecvしたか
-    // 死んでる奴は(isAlive() == false)はRecvとみなす
+    // isAlive() == true && canSendToNext() == true であるUnitのみRecvを待つ
+    // 先にQueueの判定をして、Queueに溜まっていれば生死に関わらずそれの処理を行う
     if(std::all_of(pool_.begin(), pool_.end(),
         [](const std::pair<UnitPtr, const std::queue<PCMWave>>& item) {
-            return !item.first->isAlive() || !item.second.empty();
+            auto& unit = *item.first;
+            auto& que = item.second;
+            return !que.empty() || !(unit.isAlive() && unit.canSendToNext());
         }))
     {
         emitPool();
