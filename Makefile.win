@@ -1,0 +1,30 @@
+CXX=g++
+CPPS=glutview.cpp main.cpp units.cpp wavefile.cpp socket.cpp portaudio.cpp asio_network.cpp
+OBJS=$(CPPS:.cpp=.o)
+DEPS=$(CPPS:.cpp=.d)
+#LIB=-lboost_thread -lboost_system -lportaudio -lncurses
+INCLUDE=\
+	-ID:\Zaru\Dropbox\Softs\MinGW\libraries\ncurses\include\ncursesw -ID:\Zaru\Dropbox\Softs\MinGW\libraries\ncurses\include \
+	-ID:\Zaru\Dropbox\Softs\MinGW\libraries\portaudio\include \
+	-ID:\Zaru\Dropbox\Softs\MinGW\libraries\boost_1_57_0\include -D_WIN32_WINNT=0x0501 -DWINVER=0x0501 \
+	-ID:\Zaru\Dropbox\Softs\MinGW\libraries\freeglut\include
+LIB=\
+	-static-libgcc -static-libstdc++ \
+	-LD:\Zaru\Dropbox\Softs\MinGW\libraries\ncurses\lib -lncursesw \
+	-LD:\Zaru\Dropbox\Softs\MinGW\libraries\portaudio\lib -lportaudio -lportaudiocpp \
+	-LD:\Zaru\Dropbox\Softs\MinGW\libraries\boost_1_57_0\lib -lboost_thread-mgw48-mt-1_57 -lboost_system-mgw48-mt-1_57 -lboost_regex-mgw48-mt-1_57 -lboost_serialization-mgw48-mt-1_57 -lwsock32 -lWS2_32 \
+	-LD:\Zaru\Dropbox\Softs\MinGW\libraries\freeglut\lib -lfreeglut -lfreeglut_static -lglu32 -lopengl32
+FLAGS=-g -O0 -std=c++11
+
+cables: $(OBJS)
+	$(CXX) -o $@ $(OBJS) $(LIB)
+
+%.o: %.cpp
+	$(CXX) $(FLAGS) -c -MMD -MP $< $(INCLUDE)
+
+clean: 
+	@rm -f $(OBJS) $(DEPS)
+
+all: clean cables
+
+#-include $(DEPS)

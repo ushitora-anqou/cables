@@ -15,13 +15,15 @@ int main()
     std::shared_ptr<AsioNetworkSystem> network(std::make_shared<AsioNetworkSystem>());
     UnitManager manager;
     manager.makeUnit<MicOutUnit>("mic", audio->createInputStream(audio->getDefaultInputDevice()));
+    manager.makeUnit<AsioNetworkSendUnit>("send", network->getSystemInfo(), 12345, "127.0.0.1");
     manager.makeUnit<AsioNetworkRecvUnit>("recv", network->getSystemInfo(), 12345);
     manager.makeUnit<SpeakerInUnit>("spk", audio->createOutputStream(audio->getDefaultOutputDevice()));
-    manager.connect({"mic", "recv"}, {"spk"});
+    manager.connect({"mic"}, {"send"});
+    manager.connect({"recv"}, {"spk"});
 
     // run
     manager.startAll();
-    sleepms(5000);
+    sleepms(500000);
     manager.stopAll();
 }
 

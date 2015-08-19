@@ -2,8 +2,8 @@
 #ifndef ___CONNECTION_HPP___
 #define ___CONNECTION_HPP___
 
-#include <boost/archive/text_iarchive.hpp>
-#include <boost/archive/text_oarchive.hpp>
+#include <boost/archive/binary_iarchive.hpp>
+#include <boost/archive/binary_oarchive.hpp>
 #include <boost/asio.hpp>
 #include <boost/bind.hpp>
 #include <boost/function.hpp>
@@ -104,7 +104,6 @@ void Connection::asyncWrite(const T& t, const AsyncHandler<T>& orgHandler)
     }
 
     // copy data
-    auto data = std::make_shared<T>(t);
     auto handler = std::make_shared<AsyncHandler<T>>(orgHandler);
     
     // write
@@ -112,7 +111,7 @@ void Connection::asyncWrite(const T& t, const AsyncHandler<T>& orgHandler)
     buffers.push_back(boost::asio::buffer(*header));
     buffers.push_back(boost::asio::buffer(*body));
     boost::asio::async_write(socket_, buffers,
-        boost::bind(&Connection::handleWrite<T>, this, boost::asio::placeholders::error, handler, data, header, body));
+        boost::bind(&Connection::handleWrite<T>, this, boost::asio::placeholders::error, handler, nullptr, header, body));
 }
 
 template<class T>
@@ -131,7 +130,7 @@ void Connection::makeDataToWrite(const T& t, std::string& header, std::string& b
 {
     // serialize
     std::ostringstream os;
-    boost::archive::text_oarchive ar(os);
+    boost::archive::binary_oarchive ar(os);
     ar << t;
     body = os.str();
 
@@ -156,14 +155,14 @@ template<class T>
 void Connection::extractData(T& t, const std::string& body)
 {
     std::istringstream is(body);
-    boost::archive::text_iarchive ar(is);
+    boost::archive::binary_iarchive ar(is);
     ar >> t;
 }
 
 template<class T>
 void Connection::handleWrite(const boost::system::error_code& error, AsyncHandlerPtr<T> handler, std::shared_ptr<T> data, std::shared_ptr<std::string>, std::shared_ptr<std::string>)
 {
-    (*handler)(error, *data);
+    (*handler)(error, boost::none);
 }
 
 template<class T>
