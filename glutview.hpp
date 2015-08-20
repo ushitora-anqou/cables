@@ -25,6 +25,23 @@ public:
 class GlutView : public View, public glut::Window
 {
 private:
+    const int
+        LEVEL_METER_DB_MIN = -60,
+        PIXEL_PER_DB = 8,
+
+        UNIT_HEIGHT = 50,
+
+        SELECTED_MARK_POS_X = 0,
+        SELECTED_MARK_WIDTH = 50,
+
+        LEVEL_METER_POS_X = SELECTED_MARK_WIDTH,
+        LEVEL_METER_WIDTH = -LEVEL_METER_DB_MIN * PIXEL_PER_DB, 
+        LEVEL_METER_HEIGHT = UNIT_HEIGHT / 2,
+
+        OPTIONAL_POS_X = LEVEL_METER_POS_X + LEVEL_METER_WIDTH,
+        OPTIONAL_UNIT_WIDTH = 50;
+
+    /*
 	const int
         LEVEL_METER_DB_MIN = -60,
         PIXEL_PER_DB = 8,
@@ -33,14 +50,11 @@ private:
         LEVEL_METER_LEFT_MARGIN = 50,
         LEVEL_METER_RIGHT_MARGIN = 50,
         WINDOW_WIDTH = LEVEL_METER_LEFT_MARGIN + LEVEL_METER_BAR_LENGTH + LEVEL_METER_RIGHT_MARGIN;
+        */
 
-    struct GroupMutexedData
-    {
-		std::pair<double, double> level;
-    };
-    std::vector<GroupMutexedData> data_;
     int groupMask_;
     boost::mutex mtx_;
+    std::vector<std::pair<double, double>> mtxedDBLevels_;
 
 private:
     void displayFunc() override;
@@ -64,7 +78,7 @@ private:
     void drawString(double x0, double y0, const std::string& msg, const Color& color);
 
     // applicative draw functions
-    int calcY(int index, int ch = 0) { return LEVEL_METER_BAR_HEIGHT * (index * 2 + ch); }
+    int calcY(int index, int ch = 0) { return LEVEL_METER_HEIGHT * (index * 2 + ch); }
     void drawLevelMeterBox(int index, int ch, double widthRatio, const Color& color);
     void drawLevelMeterBack(int index, double widthRatio, const Color& color);
     void drawSelectedUnitMark(int index);
@@ -74,7 +88,7 @@ public:
     GlutView(int groupSize);
     ~GlutView(){}
 
-    void updateLevelMeter(int index, const PCMWave::Sample& sample) override;
+    void updateLevelMeter(int index, const PCMWave::Sample& sample);
 };
 
 #endif

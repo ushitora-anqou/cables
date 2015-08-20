@@ -60,6 +60,7 @@ private:
 
 public:
     PCMWave(){}
+    PCMWave(int) { buffer_.fill(Sample(0, 0)); }
     ~PCMWave(){}
 
     Buffer& get() { return buffer_; }

@@ -6,6 +6,7 @@
 #include "wavefile.hpp"
 #include "audio.hpp"
 #include "socket.hpp"
+#include <atomic>
 #include <memory>
 #include <vector>
 
@@ -52,19 +53,35 @@ public:
 class OnOffFilter : public Unit
 {
 private:
-    bool isOn_;
+    std::atomic<int> isOn_;
+    const PCMWave emptyWave_;
 
 public:
     OnOffFilter()
-        : isOn_(true)
-    {}
+        : isOn_(1), emptyWave_(0)
+    {
+    }
 
     void inputImpl(const PCMWave& wave)
     {
         if(isOn_)   send(wave);
+        else    send(emptyWave_);
     }
 
-    void turn() { isOn_ = isOn_ ? false : true; }
+    void turn()
+    {
+        isOn_ ^= 1;
+    }
+
+    bool isOn()
+    {
+        return isOn_;
+    }
+
+    bool isOff()
+    {
+        return !isOn_;
+    }
 };
 
 class VolumeFilter : public Unit

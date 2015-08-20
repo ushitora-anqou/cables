@@ -40,7 +40,7 @@ void GlutViewSystem::run()
 ///
 
 GlutView::GlutView(int groupSize)
-    : View(groupSize), glut::Window("recorder", 640, 480), data_(groupSize), groupMask_(0)
+    : View(groupSize), glut::Window("recorder", 640, 480), mtxedDBLevels_(groupSize), groupMask_(0)
 {}
 
 void GlutView::updateLevelMeter(int index, const PCMWave::Sample& sample)
@@ -52,7 +52,7 @@ void GlutView::updateLevelMeter(int index, const PCMWave::Sample& sample)
             sample.right == 0 ? LEVEL_METER_DB_MIN : calcDB(sample.right)));
 
 	boost::mutex::scoped_lock lock(mtx_);
-	data_.at(index).level = db;
+	mtxedDBLevels_.at(index) = db;
 }
 
 void GlutView::applyColor(const Color& color)
@@ -89,11 +89,13 @@ void GlutView::drawString(double x0, double y0, const std::string& msg, const Co
 
 void GlutView::drawLevelMeterBox(int index, int ch, double widthRatio, const Color& color)
 {
+    if(widthRatio < 0)  return;
     const int
-        x = LEVEL_METER_LEFT_MARGIN,
+        x = LEVEL_METER_POS_X,
         y = calcY(index, ch),
-        w = LEVEL_METER_BAR_LENGTH * widthRatio;
-    drawRectangle(Rect(x, y, x + w, y + LEVEL_METER_BAR_HEIGHT), color);
+        w = LEVEL_METER_WIDTH * widthRatio,
+        h = LEVEL_METER_HEIGHT;
+    drawRectangle(Rect(x, y, x + w, y + LEVEL_METER_HEIGHT), color);
 }
 
 void GlutView::drawLevelMeterBack(int index, double widthRatio, const Color& color)
@@ -105,10 +107,11 @@ void GlutView::drawLevelMeterBack(int index, double widthRatio, const Color& col
 void GlutView::drawSelectedUnitMark(int index)
 {
     const int
-        x = 0,
+        x = SELECTED_MARK_POS_X,
         y = calcY(index),
-        w = LEVEL_METER_LEFT_MARGIN;
-    drawRectangle(Rect(x, y, x + w, y + LEVEL_METER_BAR_HEIGHT * 2), Color::yellow());
+        w = SELECTED_MARK_WIDTH,
+        h = UNIT_HEIGHT;
+    drawRectangle(Rect(x, y, x + w, y + h), Color::yellow());
 }
 
 void GlutView::drawUnitString(int index, int x, const std::string& msg, const Color& color)
@@ -121,9 +124,11 @@ void GlutView::displayFunc()
 	draw([this]() {
 		boost::mutex::scoped_lock lock(mtx_);
 
-        indexedForeach(data_, [this](int i, GroupMutexedData& data) {
+        indexedForeach(mtxedDBLevels_, [this](int i, const std::pair<double, double>& db) {
+            auto& groupInfo = getGroup(i);
+
             // draw level meter
-            auto& ldb = data.level.first, rdb = data.level.second;
+            auto& ldb = db.first, &rdb = db.second;
             // background
             drawLevelMeterBack(i,   1, Color::magenta());
             drawLevelMeterBack(i, 0.6, Color::cyan());
@@ -132,19 +137,25 @@ void GlutView::displayFunc()
             drawLevelMeterBox(i, 1, 1 - rdb / LEVEL_METER_DB_MIN, Color::green());
 
             // alive
-            if(!getGroupInfo(i).mic.lock()->isAlive())
+            if(!groupInfo.isAlive())
                 drawLevelMeterBack(i, 1, Color::gray());
 
             // selected unit highlight
             if(groupMask_ & (1 << i))   drawSelectedUnitMark(i);
 
+            // draw optional data
+            auto optData = std::move(groupInfo.createOptionalInfo());
+            indexedForeach(optData, [this, i](int oi, const std::string& msg) {
+                drawUnitString(i, OPTIONAL_POS_X + OPTIONAL_UNIT_WIDTH * oi,
+                    msg, Color::black());
+            });
             // volume
-            drawUnitString(i, WINDOW_WIDTH - LEVEL_METER_RIGHT_MARGIN + 20,
-                boost::lexical_cast<std::string>(getGroupInfo(i).volume.lock()->getRate()),
-                Color::black());
+            //drawUnitString(i, WINDOW_WIDTH - LEVEL_METER_RIGHT_MARGIN + 20,
+                //boost::lexical_cast<std::string>(getGroupInfo(i).volume.lock()->getRate()),
+                //Color::black());
 
             // name
-            drawUnitString(i, LEVEL_METER_LEFT_MARGIN, getGroupInfo(i).name, Color::black());
+            drawUnitString(i, LEVEL_METER_POS_X, groupInfo.createName(), Color::black());
 		});
 	});
 }
@@ -164,6 +175,12 @@ void GlutView::keyboardFunc(unsigned char key, int x, int y)
         return;
     }
 
+    for(int i = 0;i < getGroupSize();i++){
+        if(!(groupMask_ & (1 << i)))    continue;
+        getGroup(i).userInput(key);
+    }
+
+    /*
     // group process
     static const std::unordered_map<unsigned char, boost::function<void(int)>> groupProcs = {
         {'o'   , [this](int index) { getGroupInfo(index).volume.lock()->addRate( 5); }},
@@ -182,6 +199,7 @@ void GlutView::keyboardFunc(unsigned char key, int x, int y)
         }
         return;
     }
+    */
 
     // global process
 	switch(key)

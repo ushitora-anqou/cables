@@ -9,6 +9,7 @@
 
 #include "asio_network.hpp"
 
+/*
 int main()
 {
     std::shared_ptr<AudioSystem> audio(std::make_shared<PAAudioSystem>());
@@ -26,9 +27,55 @@ int main()
     sleepms(500000);
     manager.stopAll();
 }
+*/
 
+class RecorderGroup: public Group
+{
+private:
+    std::string name_;
+    std::shared_ptr<MicOutUnit> mic_;
+    std::shared_ptr<VolumeFilter> volume_;
+    std::shared_ptr<OnOffFilter> onoff_;
 
-/*
+public:
+    RecorderGroup(const std::string& name, const std::shared_ptr<MicOutUnit>& mic, const std::shared_ptr<VolumeFilter>& volume, const std::shared_ptr<OnOffFilter>& onoff)
+        : name_(name), mic_(mic), volume_(volume), onoff_(onoff)
+    {}
+    ~RecorderGroup(){}
+
+    bool isAlive() override
+    {
+        return mic_->isAlive() && volume_->isAlive() && onoff_->isAlive() && onoff_->isOn();
+    }
+
+    std::string createName() override
+    {
+        return name_;
+    }
+
+    std::vector<std::string> createOptionalInfo() override
+    {
+        return std::vector<std::string>({boost::lexical_cast<std::string>(volume_->getRate())});
+    }
+
+    void userInput(unsigned char ch) override
+    {
+        switch(ch)
+        {
+        case 's':
+            onoff_->turn();
+            break;
+        case 'o':
+            volume_->addRate(5);
+            break;
+        case 'l':
+            volume_->addRate(-5);
+            break;
+        }
+    }
+
+};
+
 int main(int argc, char **argv)
 {
     std::shared_ptr<AudioSystem> system(std::make_shared<PAAudioSystem>());
@@ -85,23 +132,29 @@ int main(int argc, char **argv)
             volumeName = "vol_" + devName,
             printName = "pfl_" + devName,
             fileName = "wfl_" + devName,
-            pumpName = "pmp_" + devName;
+            pumpName = "pmp_" + devName,
+            onoffName = "swt_" + devName;
 
         manager.makeUnit<MicOutUnit>(micName, system->createInputStream(dev));
         manager.makeUnit<VolumeFilter>(volumeName);
         manager.makeUnit<PrintFilter>(printName, view, i);
         manager.makeUnit<FileInUnit>(fileName, fileName + ".wav");
         manager.makeUnit<PumpOutUnit>(pumpName);
+        manager.makeUnit<OnOffFilter>(onoffName);
         
-        manager.connect({micName, pumpName}, {volumeName});
+        manager.connect({micName}, {onoffName});
+        manager.connect({onoffName}, {volumeName});
         manager.connect({volumeName}, {printName, fileName});
         outputUnitNames.push_back(volumeName);
 
-        GroupInfo info;
-        info.name = devName;
-        info.mic = manager.getCastUnit<MicOutUnit>(micName);
-        info.volume = manager.getCastUnit<VolumeFilter>(volumeName);
-        view->setGroupInfo(i, info);
+        auto info = 
+            std::make_shared<RecorderGroup>(
+                devName,
+                manager.getCastUnit<MicOutUnit>(micName).lock(),
+                manager.getCastUnit<VolumeFilter>(volumeName).lock(),
+                manager.getCastUnit<OnOffFilter>(onoffName).lock()
+            );
+        view->setGroup(i, info);
     });
 
     // connect group and inputs
@@ -112,4 +165,3 @@ int main(int argc, char **argv)
     viewSystem->run();
     manager.stopAll();
 }
-*/

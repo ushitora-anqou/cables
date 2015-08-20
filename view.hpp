@@ -21,20 +21,36 @@ public:
 	virtual void run() = 0;
 };
 
-struct GroupInfo
+/*
+struct Group
 {
     std::string name;
     std::weak_ptr<MicOutUnit> mic;
     std::weak_ptr<VolumeFilter> volume;
 };
+*/
+
+class Group
+{
+public:
+    Group(){}
+    virtual ~Group(){}
+
+    virtual bool isAlive() = 0;
+    virtual std::string createName() = 0;
+    virtual std::vector<std::string> createOptionalInfo() = 0;
+    virtual void userInput(unsigned char ch) = 0;
+};
+using GroupPtr = std::shared_ptr<Group>;
 
 class View
 {
 private:
-    std::vector<GroupInfo> groupInfoList_;
+    std::vector<GroupPtr> groupInfoList_;
 
 protected:
-    const GroupInfo& getGroupInfo(int index) const { return groupInfoList_.at(index); }
+    int getGroupSize() { return groupInfoList_.size(); }
+    Group& getGroup(int index) { return *groupInfoList_.at(index); }
 
 public:
     View(int groupSize)
@@ -44,7 +60,7 @@ public:
 
     // un-mutexed function
     // can be called only when init
-    void setGroupInfo(int index, const GroupInfo& info)
+    void setGroup(int index, const GroupPtr& info)
     {
         groupInfoList_.at(index) = info;
     }
