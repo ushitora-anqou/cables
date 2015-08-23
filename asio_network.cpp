@@ -108,6 +108,7 @@ void AsioNetworkSendUnit::inputImpl(const PCMWave& wave)
 {
     std::shared_ptr<WaveData> data = std::make_shared<WaveData>(wave);
     ioService_.post([this, data]() {
+        if(!conn_->getSocket().is_open()) return;
         bool isProcessing = !waveQue_.empty();
         waveQue_.push(data);
         if(!isProcessing)   startSend();

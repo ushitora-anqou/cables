@@ -2,8 +2,10 @@
 #ifndef ___CONNECTION_HPP___
 #define ___CONNECTION_HPP___
 
-#include <boost/archive/binary_iarchive.hpp>
-#include <boost/archive/binary_oarchive.hpp>
+//#include <boost/archive/binary_iarchive.hpp>
+//#include <boost/archive/binary_oarchive.hpp>
+#include "eos/portable_iarchive.hpp"
+#include "eos/portable_oarchive.hpp"
 #include <boost/asio.hpp>
 #include <boost/bind.hpp>
 #include <boost/function.hpp>
@@ -130,7 +132,8 @@ void Connection::makeDataToWrite(const T& t, std::string& header, std::string& b
 {
     // serialize
     std::ostringstream os;
-    boost::archive::binary_oarchive ar(os);
+    //boost::archive::binary_oarchive ar(os);
+    eos::portable_oarchive ar(os);
     ar << t;
     body = os.str();
 
@@ -155,7 +158,8 @@ template<class T>
 void Connection::extractData(T& t, const std::string& body)
 {
     std::istringstream is(body);
-    boost::archive::binary_iarchive ar(is);
+    //boost::archive::binary_iarchive ar(is);
+    eos::portable_iarchive ar(is);
     ar >> t;
 }
 

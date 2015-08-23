@@ -27,9 +27,6 @@ public:
     boost::asio::io_service& getSystemInfo() { return ioService_; }
 };
 
-// recv, sendのUnitは、コンストラクタで接続・情報交換
-// startが呼ばれるまでwaveデータの送受信はしない
-
 namespace boost {
     namespace serialization {
         template <class Archive>
