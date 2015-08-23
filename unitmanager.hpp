@@ -18,9 +18,9 @@ public:
     ~UnitManager(){}
 
     template<class T, class... Args>
-    void makeUnit(const std::string& name, Args&&... args)
+    std::shared_ptr<T> makeUnit(const std::string& name, Args&&... args)
     {
-        units_.insert(std::make_pair(name, ::makeUnit<T>(std::forward<Args>(args)...)));
+        return std::dynamic_pointer_cast<T>(units_.insert(std::make_pair(name, ::makeUnit<T>(std::forward<Args>(args)...))).first->second);
     }
 
     void connect(const std::vector<std::string>& from, const std::vector<std::string>& to)

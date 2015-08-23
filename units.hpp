@@ -57,8 +57,8 @@ private:
     const PCMWave emptyWave_;
 
 public:
-    OnOffFilter()
-        : isOn_(1), emptyWave_(0)
+    OnOffFilter(bool init = true)
+        : isOn_(init ? 1 : 0), emptyWave_(0)
     {
     }
 
@@ -66,6 +66,11 @@ public:
     {
         if(isOn_)   send(wave);
         else    send(emptyWave_);
+    }
+
+    void set(bool flag)
+    {
+        isOn_ = flag ? 1 : 0;
     }
 
     void turn()
