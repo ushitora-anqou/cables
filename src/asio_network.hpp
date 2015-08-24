@@ -75,6 +75,7 @@ private:
     bool canSendToNext_;
 
 private:
+    void startAccept();
     void startRead();
 
 public:
@@ -97,6 +98,7 @@ private:
     std::queue<std::shared_ptr<WaveData>> waveQue_;
 
 private:
+    void startConnect();
     void startSend();
 
 public:

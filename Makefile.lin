@@ -9,16 +9,22 @@ DEPS=$(OBJS:.o=.d)
 LIB=-lboost_thread -lboost_system -lboost_regex -lboost_serialization -lportaudio -lglut -lGLU -lGL -lm
 FLAGS=-g -O0 -std=c++11 -MMD -MP 
 
-$(TARGET): $(OBJS)
-	$(CXX) -o $@ $(OBJS) $(LIB)
+all: mixer mic
+
+mixer: $(OBJS) mains/mixer.o
+	$(CXX) -o $@ $^ $(LIB)
+
+mic: $(OBJS) mains/mic.o
+	$(CXX) -o $@ $^ $(LIB)
 
 $(MEDDIR)/%.o: $(SRCDIR)/%.cpp
 	@[ -d $(MEDDIR) ] || mkdir -p $(MEDDIR)
 	$(CXX) $(FLAGS) -o $@ -c $<
 
+mains/%.o: mains/%.cpp
+	$(CXX) $(FLAGS) -o $@ -c $< -Isrc 
+
 clean: 
 	@rm -f $(OBJS) $(DEPS) $(TARGET)
-
-all: clean $(TARGET)
 
 -include $(DEPS)

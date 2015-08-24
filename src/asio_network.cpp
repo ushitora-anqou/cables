@@ -34,6 +34,19 @@ AsioNetworkRecvUnit::AsioNetworkRecvUnit(unsigned short port)
     conn_ = createConnection();
 }
 
+void AsioNetworkRecvUnit::startAccept()
+{
+    acceptor_->async_accept(conn_->getSocket(),[this](const boost::system::error_code& error) {
+        if(error){
+            std::cout << "ASYNC_ACCEPT_ERROR: " << error.message() << std::endl;
+            return;
+        }
+
+        canSendToNext_ = true;
+        startRead();
+    });
+}
+
 void AsioNetworkRecvUnit::startRead()
 {
     conn_->asyncRead<WaveData>(boost::bind(&AsioNetworkRecvUnit::handleRecvWaveData, this, _1, _2));
@@ -41,17 +54,7 @@ void AsioNetworkRecvUnit::startRead()
 
 void AsioNetworkRecvUnit::startImpl()
 {
-    postProc([this]() {
-        acceptor_->async_accept(conn_->getSocket(),[this](const boost::system::error_code& error) {
-            if(error){
-                std::cout << "ASYNC_ACCEPT_ERROR: " << error.message() << std::endl;
-                return;
-            }
-
-            canSendToNext_ = true;
-            startRead();
-        });
-    });
+    postProc([this]() { startAccept(); });
 }
 
 void AsioNetworkRecvUnit::stopImpl()
@@ -68,6 +71,7 @@ void AsioNetworkRecvUnit::handleRecvWaveData(const boost::system::error_code& er
     if(error || !data){
         std::cout << "ASYNC_RECV_ERROR: " << error.message() << std::endl;
         canSendToNext_ = false;
+        if(error == boost::asio::error::eof)    startAccept();
         return;
     }
 
@@ -84,6 +88,19 @@ AsioNetworkSendUnit::AsioNetworkSendUnit(const unsigned short port, const std::s
     conn_ = createConnection();
 }
 
+void AsioNetworkSendUnit::startConnect()
+{
+    conn_->getSocket().async_connect(
+        boost::asio::ip::tcp::endpoint(boost::asio::ip::address::from_string(ipaddr_), port_),
+        [this](const boost::system::error_code& error) {
+            if(error){
+                std::cout << "ASYNC_CONNECT_ERROR: " << error.message() << std::endl;
+                return;
+            }
+        }
+    );
+}
+
 void AsioNetworkSendUnit::startSend()
 {
     conn_->asyncWrite<WaveData>(*waveQue_.front(),
@@ -91,6 +108,7 @@ void AsioNetworkSendUnit::startSend()
             waveQue_.pop();
             if(error){
                 std::cout << "ASYNC_WRITE_ERROR: " << error.message() << std::endl;
+                if(error == boost::asio::error::eof)    startConnect();
                 return;
             }
             if(!waveQue_.empty())   startSend();
@@ -100,17 +118,7 @@ void AsioNetworkSendUnit::startSend()
 
 void AsioNetworkSendUnit::startImpl()
 {
-    postProc([this]() {
-        conn_->getSocket().async_connect(
-            boost::asio::ip::tcp::endpoint(boost::asio::ip::address::from_string(ipaddr_), port_),
-            [this](const boost::system::error_code& error) {
-                if(error){
-                    std::cout << "ASYNC_CONNECT_ERROR: " << error.message() << std::endl;
-                    return;
-                }
-            }
-        );
-    });
+    postProc([this]() { startConnect(); });
 }
 
 void AsioNetworkSendUnit::stopImpl()
