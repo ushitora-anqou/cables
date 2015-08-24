@@ -39,26 +39,6 @@ public:
     }
 };
 
-/*
-int main()
-{
-    std::shared_ptr<AudioSystem> audio(std::make_shared<PAAudioSystem>());
-    std::shared_ptr<AsioNetworkSystem> network(std::make_shared<AsioNetworkSystem>());
-    UnitManager manager;
-    manager.makeUnit<MicOutUnit>("mic", audio->createInputStream(audio->getDefaultInputDevice()));
-    manager.makeUnit<AsioNetworkSendUnit>("send", network->getSystemInfo(), 12345, "127.0.0.1");
-    manager.makeUnit<AsioNetworkRecvUnit>("recv", network->getSystemInfo(), 12345);
-    manager.makeUnit<SpeakerInUnit>("spk", audio->createOutputStream(audio->getDefaultOutputDevice()));
-    manager.connect({"mic"}, {"send"});
-    manager.connect({"recv"}, {"spk"});
-
-    // run
-    manager.startAll();
-    sleepms(500000);
-    manager.stopAll();
-}
-*/
-
 class RecorderGroup: public Group
 {
 private:
@@ -122,7 +102,7 @@ private:
     std::shared_ptr<AsioNetworkSendUnit> send_;
 
 public:
-    MicSideGroup(UnitManager& manager, const std::shared_ptr<AudioSystem>& audioSystem, const AudioDevicePtr& micDev, const std::shared_ptr<View>& view, int viewIndex, const std::shared_ptr<AsioNetworkSystem>& networkSystem, const std::string& ip, unsigned short port)
+    MicSideGroup(UnitManager& manager, const std::shared_ptr<AudioSystem>& audioSystem, const AudioDevicePtr& micDev, const std::shared_ptr<View>& view, int viewIndex, const std::string& ip, unsigned short port)
     {
         const std::string
             devName = replaceSpaces("_", micDev->name()) + "_" + toString(viewIndex),
@@ -143,7 +123,7 @@ public:
         sinVolume_ = manager.makeUnit<VolumeFilter>(sinVolumeName);
         sinOnOff_ = manager.makeUnit<OnOffFilter>(sinOnOffName, false);
         print_ = manager.makeUnit<PrintFilter>(printName, view, viewIndex);
-        send_ = manager.makeUnit<AsioNetworkSendUnit>(sendName, networkSystem->getSystemInfo(), port, ip);
+        send_ = manager.makeUnit<AsioNetworkSendUnit>(sendName, port, ip);
 
         manager.connect({micName}, {micVolumeName});
         manager.connect({micVolumeName}, {micOnOffName});
@@ -217,7 +197,7 @@ private:
     std::shared_ptr<OnOffFilter> onoff_;
 
 public:
-    MixerSideGroup(UnitManager& manager, const std::shared_ptr<View>& view, int viewIndex, const std::shared_ptr<AsioNetworkSystem>& networkSystem, unsigned short port, const std::string& masterVolumeName)
+    MixerSideGroup(UnitManager& manager, const std::shared_ptr<View>& view, int viewIndex, unsigned short port, const std::string& masterVolumeName)
         : name_("conn_" + toString(viewIndex))
     {
         const std::string
@@ -229,7 +209,7 @@ public:
 
         vol_ = manager.makeUnit<VolumeFilter>(volName);
         pfl_ = manager.makeUnit<PrintFilter>(printName, view, viewIndex);
-        recv_ = manager.makeUnit<AsioNetworkRecvUnit>(recvName, networkSystem->getSystemInfo(), port);
+        recv_ = manager.makeUnit<AsioNetworkRecvUnit>(recvName, port);
         onoff_ = manager.makeUnit<OnOffFilter>(onoffName);
         manager.makeUnit<PumpOutUnit>(pmpName);
 
@@ -302,12 +282,11 @@ int main(int argc, char **argv)
     UnitManager manager;
 
     // make output unit and group
-    std::shared_ptr<AsioNetworkSystem> networkSystem(std::make_shared<AsioNetworkSystem>());
 	std::shared_ptr<ViewSystem> viewSystem(std::make_shared<GlutViewSystem>(argc, argv));
     auto view = viewSystem->createView(inputDevices.size());
-    indexedForeach(inputDevices, [&manager, &system, &view, &networkSystem](int i, const AudioDevicePtr& dev) {
+    indexedForeach(inputDevices, [&manager, &system, &view](int i, const AudioDevicePtr& dev) {
         auto info = std::make_shared<MicSideGroup>(
-            manager, system, dev, view, i, networkSystem, "127.0.0.1", 12345 + i
+            manager, system, dev, view, i, "127.0.0.1", 12345 + i
         );
         view->setGroup(i, info);
     });
@@ -355,14 +334,13 @@ int main(int argc, char **argv)
         inputUnitNames.push_back(speakerName);
     });
 
-    std::shared_ptr<AsioNetworkSystem> networkSystem(std::make_shared<AsioNetworkSystem>());
 	std::shared_ptr<ViewSystem> viewSystem(std::make_shared<GlutViewSystem>(argc, argv));
     auto view = viewSystem->createView(3);
 
     manager.makeUnit<VolumeFilter>("mastervolume");
     for(int i = 0;i < 3;i++){
         auto group = std::make_shared<MixerSideGroup>(
-            manager, view, i, networkSystem, 12345 + i, "mastervolume"
+            manager, view, i, 12345 + i, "mastervolume"
         );
         view->setGroup(i, group);
     }

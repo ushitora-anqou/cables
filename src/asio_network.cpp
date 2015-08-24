@@ -1,26 +1,38 @@
 #include "asio_network.hpp"
 #include "helper.hpp"
 
-AsioNetworkSystem::AsioNetworkSystem()
+AsioNetworkBase::AsioNetworkBase()
 {
     work_ = make_unique<boost::asio::io_service::work>(ioService_);
     ioServer_ = make_unique<boost::thread>([this]() { ioService_.run(); });
 }
 
-AsioNetworkSystem::~AsioNetworkSystem()
+AsioNetworkBase::~AsioNetworkBase()
 {
     work_.reset();
     ioServer_->join();
 }
 
+std::unique_ptr<boost::asio::ip::tcp::acceptor> AsioNetworkBase::createAcceptor(unsigned short port)
+{
+    return make_unique<boost::asio::ip::tcp::acceptor>(
+        ioService_, boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), port));
+}
+
+ConnectionPtr AsioNetworkBase::createConnection()
+{
+    return std::make_shared<Connection>(ioService_);
+}
+
+
 ///
 
-AsioNetworkRecvUnit::AsioNetworkRecvUnit(boost::asio::io_service& ioService, const unsigned short port)
-    : ioService_(ioService),
-      acceptor_(ioService, boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), port)),
-      conn_(std::make_shared<Connection>(ioService)),
-      canSendToNext_(false)
-{}
+AsioNetworkRecvUnit::AsioNetworkRecvUnit(unsigned short port)
+    : canSendToNext_(false)
+{
+    acceptor_ = createAcceptor(port);
+    conn_ = createConnection();
+}
 
 void AsioNetworkRecvUnit::startRead()
 {
@@ -29,8 +41,8 @@ void AsioNetworkRecvUnit::startRead()
 
 void AsioNetworkRecvUnit::startImpl()
 {
-    ioService_.post([this]() {
-        acceptor_.async_accept(conn_->getSocket(),[this](const boost::system::error_code& error) {
+    postProc([this]() {
+        acceptor_->async_accept(conn_->getSocket(),[this](const boost::system::error_code& error) {
             if(error){
                 std::cout << "ASYNC_ACCEPT_ERROR: " << error.message() << std::endl;
                 return;
@@ -44,8 +56,8 @@ void AsioNetworkRecvUnit::startImpl()
 
 void AsioNetworkRecvUnit::stopImpl()
 {
-    ioService_.post([this]() {
-        acceptor_.close();
+    postProc([this]() {
+        acceptor_->close();
         conn_->getSocket().close();
         canSendToNext_ = false;
     });
@@ -66,9 +78,11 @@ void AsioNetworkRecvUnit::handleRecvWaveData(const boost::system::error_code& er
 
 ///
 
-AsioNetworkSendUnit::AsioNetworkSendUnit(boost::asio::io_service& ioService, const unsigned short port, const std::string& ipaddr)
-    : ioService_(ioService), conn_(std::make_shared<Connection>(ioService)), port_(port), ipaddr_(ipaddr)
-{}
+AsioNetworkSendUnit::AsioNetworkSendUnit(const unsigned short port, const std::string& ipaddr)
+    : port_(port), ipaddr_(ipaddr)
+{
+    conn_ = createConnection();
+}
 
 void AsioNetworkSendUnit::startSend()
 {
@@ -86,7 +100,7 @@ void AsioNetworkSendUnit::startSend()
 
 void AsioNetworkSendUnit::startImpl()
 {
-    ioService_.post([this]() {
+    postProc([this]() {
         conn_->getSocket().async_connect(
             boost::asio::ip::tcp::endpoint(boost::asio::ip::address::from_string(ipaddr_), port_),
             [this](const boost::system::error_code& error) {
@@ -101,13 +115,13 @@ void AsioNetworkSendUnit::startImpl()
 
 void AsioNetworkSendUnit::stopImpl()
 {
-    ioService_.post([this]() { conn_->getSocket().close(); });
+    postProc([this]() { conn_->getSocket().close(); });
 }
 
 void AsioNetworkSendUnit::inputImpl(const PCMWave& wave)
 {
     std::shared_ptr<WaveData> data = std::make_shared<WaveData>(wave);
-    ioService_.post([this, data]() {
+    postProc([this, data]() {
         if(!conn_->getSocket().is_open()) return;
         bool isProcessing = !waveQue_.empty();
         waveQue_.push(data);
@@ -120,7 +134,7 @@ void AsioNetworkSendUnit::inputImpl(const PCMWave& wave)
 void AsioNetworkSendUnit::inputImpl(const PCMWave& wave)
 {
     std::shared_ptr<PCMWave> data = std::make_shared<PCMWave>(wave);
-    ioService_.post([this, data]() {
+    postProc([this, data]() {
         currentData_->data.at(currentDataIndex_++) = data;
         if(currentDataIndex_ != currentData_->data.size())  return;
         bool isProcessing = !waveQue_.empty();
