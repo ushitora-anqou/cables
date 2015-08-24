@@ -9,6 +9,36 @@
 
 #include "asio_network.hpp"
 
+class SinFakeOutUnit : public Unit
+{
+private:
+    std::vector<double> sinTable_;
+    int p_;
+
+public:
+    SinFakeOutUnit(int f)
+        : sinTable_(PCMWave::SAMPLE_RATE / f, 0), p_(0)
+    {
+        int t = sinTable_.size();
+        for(int i = 0;i < t;i++){
+            sinTable_.at(i) = static_cast<double>(::sin(2 * 3.14159265358979323846264338 * i / t));
+        }
+    }
+    ~SinFakeOutUnit(){}
+
+    void inputImpl(const PCMWave& wave)
+    {
+        auto& tbl = sinTable_;
+        PCMWave ret;
+        for(auto& s : ret){
+            s.left = tbl.at(p_);
+            s.right = tbl.at(p_);
+            p_ = (p_ + 1) % tbl.size();
+        }
+        send(ret);
+    }
+};
+
 /*
 int main()
 {
@@ -157,8 +187,8 @@ public:
             sinOnOff_->set(true);
             break;
         case 'm':
-            micOnOff_->set(true);
             sinOnOff_->set(false);
+            micOnOff_->set(true);
             break;
         case 'o':
             micVolume_->addRate(5);
@@ -225,6 +255,8 @@ public:
         });
     }
 
+
+
     void userInput(unsigned char ch) override
     {
         switch(ch)
@@ -275,7 +307,7 @@ int main(int argc, char **argv)
     auto view = viewSystem->createView(inputDevices.size());
     indexedForeach(inputDevices, [&manager, &system, &view, &networkSystem](int i, const AudioDevicePtr& dev) {
         auto info = std::make_shared<MicSideGroup>(
-            manager, system, dev, view, i, networkSystem, "192.168.0.1", 12345 + i
+            manager, system, dev, view, i, networkSystem, "127.0.0.1", 12345 + i
         );
         view->setGroup(i, info);
     });
