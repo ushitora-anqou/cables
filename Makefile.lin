@@ -1,16 +1,20 @@
 TARGET=cables
 CXX=g++
-CPPS=glutview.cpp main.cpp units.cpp wavefile.cpp socket.cpp portaudio.cpp asio_network.cpp
-OBJS=$(CPPS:.cpp=.o)
-DEPS=$(CPPS:.cpp=.d)
-LIB=-lboost_thread -lboost_system -lboost_regex -lboost_serialization -lportaudio -lncurses -lglut -lGLU -lGL -lm
-FLAGS=-g -O0 -std=c++11
+SRCDIR=src
+MEDDIR=med
+
+CPPS=$(notdir $(wildcard $(SRCDIR)/*.cpp))	# ソースの複数階層に対応していない
+OBJS=$(addprefix $(MEDDIR)/, $(CPPS:.cpp=.o))
+DEPS=$(OBJS:.o=.d)
+LIB=-lboost_thread -lboost_system -lboost_regex -lboost_serialization -lportaudio -lglut -lGLU -lGL -lm
+FLAGS=-g -O0 -std=c++11 -MMD -MP 
 
 $(TARGET): $(OBJS)
 	$(CXX) -o $@ $(OBJS) $(LIB)
 
-%.o: %.cpp
-	$(CXX) $(FLAGS) -c -MMD -MP $<
+$(MEDDIR)/%.o: $(SRCDIR)/%.cpp
+	@[ -d $(MEDDIR) ] || mkdir -p $(MEDDIR)
+	$(CXX) $(FLAGS) -o $@ -c $<
 
 clean: 
 	@rm -f $(OBJS) $(DEPS) $(TARGET)
