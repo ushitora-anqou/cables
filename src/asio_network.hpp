@@ -11,7 +11,7 @@
 #include "pcmwave.hpp"
 #include <boost/serialization/array.hpp>
 #include <boost/thread.hpp>
-#include <queue>
+#include <deque>
 
 namespace boost {
     namespace serialization {
@@ -67,7 +67,7 @@ public:
 };
 
 
-class AsioNetworkRecvUnit : public Unit, private AsioNetworkBase
+class AsioNetworkRecvOutUnit : public Unit, private AsioNetworkBase
 {
 private:
     std::unique_ptr<boost::asio::ip::tcp::acceptor> acceptor_;
@@ -79,7 +79,7 @@ private:
     void startRead();
 
 public:
-    AsioNetworkRecvUnit(unsigned short port);
+    AsioNetworkRecvOutUnit(unsigned short port);
 
     bool canSendToNext() { return canSendToNext_; }
 
@@ -89,20 +89,20 @@ public:
     void handleRecvWaveData(const boost::system::error_code& error, const boost::optional<WaveData>& data);
 };
 
-class AsioNetworkSendUnit : public Unit, private AsioNetworkBase
+class AsioNetworkSendInUnit : public Unit, private AsioNetworkBase
 {
 private:
     ConnectionPtr conn_;
     unsigned short port_;
     std::string ipaddr_;
-    std::queue<std::shared_ptr<WaveData>> waveQue_;
+    std::deque<std::shared_ptr<WaveData>> waveQue_;
 
 private:
     void startConnect();
     void startSend();
 
 public:
-    AsioNetworkSendUnit(const unsigned short port, const std::string& ipaddr);
+    AsioNetworkSendInUnit(const unsigned short port, const std::string& ipaddr);
 
     void startImpl();
     void stopImpl();

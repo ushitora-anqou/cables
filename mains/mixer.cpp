@@ -14,7 +14,7 @@ private:
     std::string name_;
     std::shared_ptr<VolumeFilter> vol_;
     std::shared_ptr<PrintFilter> pfl_;
-    std::shared_ptr<AsioNetworkRecvUnit> recv_;
+    std::shared_ptr<AsioNetworkRecvOutUnit> recv_;
     std::shared_ptr<OnOffFilter> onoff_;
 
 public:
@@ -30,7 +30,7 @@ public:
 
         vol_ = manager.makeUnit<VolumeFilter>(volName);
         pfl_ = manager.makeUnit<PrintFilter>(printName, view, viewIndex);
-        recv_ = manager.makeUnit<AsioNetworkRecvUnit>(recvName, port);
+        recv_ = manager.makeUnit<AsioNetworkRecvOutUnit>(recvName, port);
         onoff_ = manager.makeUnit<OnOffFilter>(onoffName);
         manager.makeUnit<PumpOutUnit>(pmpName);
 

@@ -27,15 +27,15 @@ ConnectionPtr AsioNetworkBase::createConnection()
 
 ///
 
-AsioNetworkRecvUnit::AsioNetworkRecvUnit(unsigned short port)
+AsioNetworkRecvOutUnit::AsioNetworkRecvOutUnit(unsigned short port)
     : canSendToNext_(false)
 {
     acceptor_ = createAcceptor(port);
-    conn_ = createConnection();
 }
 
-void AsioNetworkRecvUnit::startAccept()
+void AsioNetworkRecvOutUnit::startAccept()
 {
+    conn_ = createConnection();
     acceptor_->async_accept(conn_->getSocket(),[this](const boost::system::error_code& error) {
         if(error){
             std::cout << "ASYNC_ACCEPT_ERROR: " << error.message() << std::endl;
@@ -47,17 +47,17 @@ void AsioNetworkRecvUnit::startAccept()
     });
 }
 
-void AsioNetworkRecvUnit::startRead()
+void AsioNetworkRecvOutUnit::startRead()
 {
-    conn_->asyncRead<WaveData>(boost::bind(&AsioNetworkRecvUnit::handleRecvWaveData, this, _1, _2));
+    conn_->asyncRead<WaveData>(boost::bind(&AsioNetworkRecvOutUnit::handleRecvWaveData, this, _1, _2));
 }
 
-void AsioNetworkRecvUnit::startImpl()
+void AsioNetworkRecvOutUnit::startImpl()
 {
     postProc([this]() { startAccept(); });
 }
 
-void AsioNetworkRecvUnit::stopImpl()
+void AsioNetworkRecvOutUnit::stopImpl()
 {
     postProc([this]() {
         acceptor_->close();
@@ -66,12 +66,12 @@ void AsioNetworkRecvUnit::stopImpl()
     });
 }
 
-void AsioNetworkRecvUnit::handleRecvWaveData(const boost::system::error_code& error, const boost::optional<WaveData>& data)
+void AsioNetworkRecvOutUnit::handleRecvWaveData(const boost::system::error_code& error, const boost::optional<WaveData>& data)
 {
     if(error || !data){
         std::cout << "ASYNC_RECV_ERROR: " << error.message() << std::endl;
         canSendToNext_ = false;
-        if(error == boost::asio::error::eof)    startAccept();
+        startAccept();
         return;
     }
 
@@ -82,14 +82,13 @@ void AsioNetworkRecvUnit::handleRecvWaveData(const boost::system::error_code& er
 
 ///
 
-AsioNetworkSendUnit::AsioNetworkSendUnit(const unsigned short port, const std::string& ipaddr)
+AsioNetworkSendInUnit::AsioNetworkSendInUnit(const unsigned short port, const std::string& ipaddr)
     : port_(port), ipaddr_(ipaddr)
+{}
+
+void AsioNetworkSendInUnit::startConnect()
 {
     conn_ = createConnection();
-}
-
-void AsioNetworkSendUnit::startConnect()
-{
     conn_->getSocket().async_connect(
         boost::asio::ip::tcp::endpoint(boost::asio::ip::address::from_string(ipaddr_), port_),
         [this](const boost::system::error_code& error) {
@@ -101,14 +100,13 @@ void AsioNetworkSendUnit::startConnect()
     );
 }
 
-void AsioNetworkSendUnit::startSend()
+void AsioNetworkSendInUnit::startSend()
 {
     conn_->asyncWrite<WaveData>(*waveQue_.front(),
         [this](const boost::system::error_code& error, const boost::optional<WaveData>&) {
-            waveQue_.pop();
+            waveQue_.pop_front();
             if(error){
                 std::cout << "ASYNC_WRITE_ERROR: " << error.message() << std::endl;
-                if(error == boost::asio::error::eof)    startConnect();
                 return;
             }
             if(!waveQue_.empty())   startSend();
@@ -116,37 +114,40 @@ void AsioNetworkSendUnit::startSend()
     );
 }
 
-void AsioNetworkSendUnit::startImpl()
+void AsioNetworkSendInUnit::startImpl()
 {
     postProc([this]() { startConnect(); });
 }
 
-void AsioNetworkSendUnit::stopImpl()
+void AsioNetworkSendInUnit::stopImpl()
 {
-    postProc([this]() { conn_->getSocket().close(); });
+    postProc([this]() {
+        conn_->getSocket().close();
+        waveQue_.clear();
+    });
 }
 
-void AsioNetworkSendUnit::inputImpl(const PCMWave& wave)
+void AsioNetworkSendInUnit::inputImpl(const PCMWave& wave)
 {
     std::shared_ptr<WaveData> data = std::make_shared<WaveData>(wave);
     postProc([this, data]() {
         if(!conn_->getSocket().is_open()) return;
         bool isProcessing = !waveQue_.empty();
-        waveQue_.push(data);
+        waveQue_.push_back(data);
         if(!isProcessing)   startSend();
     });
 }
 
 /*
 // Pool ver
-void AsioNetworkSendUnit::inputImpl(const PCMWave& wave)
+void AsioNetworkSendInUnit::inputImpl(const PCMWave& wave)
 {
     std::shared_ptr<PCMWave> data = std::make_shared<PCMWave>(wave);
     postProc([this, data]() {
         currentData_->data.at(currentDataIndex_++) = data;
         if(currentDataIndex_ != currentData_->data.size())  return;
         bool isProcessing = !waveQue_.empty();
-        waveQue_.push(currentData_);
+        waveQue_.push_back(currentData_);
         currentData_ = std::make_shared<WaveData>();
         currentDataIndex_ = 0;
         if(!isProcessing)   startSend();

@@ -52,7 +52,7 @@ private:
     std::shared_ptr<OnOffFilter> sinOnOff_;
 
     std::shared_ptr<PrintFilter> print_;
-    std::shared_ptr<AsioNetworkSendUnit> send_;
+    std::shared_ptr<AsioNetworkSendInUnit> send_;
 
 public:
     MicSideGroup(UnitManager& manager, const std::shared_ptr<AudioSystem>& audioSystem, const AudioDevicePtr& micDev, const std::shared_ptr<View>& view, int viewIndex, const std::string& ip, unsigned short port)
@@ -77,7 +77,7 @@ public:
         sinVolume_ = manager.makeUnit<VolumeFilter>(sinVolumeName);
         sinOnOff_ = manager.makeUnit<OnOffFilter>(sinOnOffName, false);
         print_ = manager.makeUnit<PrintFilter>(printName, view, viewIndex);
-        send_ = manager.makeUnit<AsioNetworkSendUnit>(sendName, port, ip);
+        send_ = manager.makeUnit<AsioNetworkSendInUnit>(sendName, port, ip);
 
         //manager.connect({micName}, {micVolumeName});
         manager.connect({micName}, {sinName, micVolumeName});
@@ -136,6 +136,10 @@ public:
             break;
         case 'k':
             sinVolume_->addRate(-5);
+            break;
+        case 'f':
+            send_->stop();
+            send_->start();
             break;
         }
     }
