@@ -72,7 +72,6 @@ class AsioNetworkRecvOutUnit : public Unit, private AsioNetworkBase
 private:
     std::unique_ptr<boost::asio::ip::tcp::acceptor> acceptor_;
     ConnectionPtr conn_;
-    bool canSendToNext_;
 
 private:
     void startAccept();
@@ -80,8 +79,6 @@ private:
 
 public:
     AsioNetworkRecvOutUnit(unsigned short port);
-
-    bool canSendToNext() { return canSendToNext_; }
 
     void startImpl();
     void stopImpl();

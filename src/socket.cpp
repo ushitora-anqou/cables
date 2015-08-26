@@ -3,43 +3,82 @@
 #include <cassert>
 #include <utility>
 
-void connect(const std::vector<UnitPtr>& from, const std::vector<UnitPtr>& to)
+void connect(const std::vector<UnitPtr>& prevUnits, const std::vector<UnitPtr>& nextUnits)
 {
-    for(auto& f : from){
-        for(auto& t : to){
-            f->socket_->toSockets_.push_back(t->socket_);
-            t->socket_->pool_.insert(
-                std::make_pair(f, std::queue<PCMWave>()));
-        }
-    }
+    for(auto& prev : prevUnits)
+        for(auto& next : nextUnits)
+            prev->connectTo(next);
 }
 
 ///
 
-Unit::Socket::Socket(Unit *parent)
-    : parent_(parent)
+Unit::Socket::Socket(Unit& parent)
+    : canRecvFromPrev_(false), canSendToNext_(false), parent_(parent)
 {}
 
+void Unit::Socket::open()
+{
+    {
+        SCOPED_LOCK(sendMtx_);
+        canSendToNext_ = true;
+    }
+    {
+        SCOPED_LOCK(recvMtx_);
+        canRecvFromPrev_ = true;
+    }
+}
+
+void Unit::Socket::close()
+{
+    {
+        SCOPED_LOCK(sendMtx_);
+        canSendToNext_ = false;
+    }
+    {
+        SCOPED_LOCK(recvMtx_);
+        canRecvFromPrev_ = false;
+        for(auto& pool : recvPool_)
+            pool.second.clear();
+    }
+}
+
+void Unit::Socket::addNextSocket(const SocketPtr& next)
+{
+    SCOPED_LOCK(sendMtx_);
+    nextSockets_.push_back(next);
+}
+
+void Unit::Socket::addPrevSocket(const SocketPtr& prev)
+{
+    SCOPED_LOCK(recvMtx_);
+    recvPool_.insert(std::make_pair(prev, std::deque<PCMWave>()));
+}
 
 void Unit::Socket::write(const PCMWave& src)
 {
-    for(auto& s : toSockets_)   s->onRecv(parent_->shared_from_this(), src);
+    SCOPED_LOCK(sendMtx_);
+    if(!canSendToNext_) return;
+
+    for(auto& socket : nextSockets_)
+        socket->onRecv(shared_from_this(), src);
 }
 
-void Unit::Socket::onRecv(const UnitPtr& unit, const PCMWave& src)
+void Unit::Socket::onRecv(const SocketPtr& sender, const PCMWave& src)
 {
-    boost::mutex::scoped_lock lock(mtx_);
+    // 受け取れる状態をこの関数内で保証
+    SCOPED_LOCK(recvMtx_);
+    if(!canRecvFromPrev_)   return;
     
-    pool_.at(unit).push(src);
+    recvPool_.at(sender).push_back(src);
 
     // 全てのUnitからRecvしたか
-    // isAlive() == true && canSendToNext() == true であるUnitのみRecvを待つ
+    // canSendToNext() == true であるUnitのみRecvを待つ
     // 先にQueueの判定をして、Queueに溜まっていれば生死に関わらずそれの処理を行う
-    if(std::all_of(pool_.begin(), pool_.end(),
-        [](const std::pair<UnitPtr, const std::queue<PCMWave>>& item) {
-            auto& unit = *item.first;
+    if(std::all_of(recvPool_.begin(), recvPool_.end(),
+        [](const std::pair<SocketPtr, std::deque<PCMWave>>& item) {
+            auto& socket = *item.first;
             auto& que = item.second;
-            return !que.empty() || !(unit.isAlive() && unit.canSendToNext());
+            return !que.empty() || !socket.canSendToNext();
         }))
     {
         emitPool();
@@ -50,8 +89,8 @@ void Unit::Socket::emitPool()
 {
     PCMWave wave;
     wave.fill(PCMWave::Sample(0, 0));
-    for(auto& p : pool_){
-        auto& que = p.second;
+    for(auto& pool : recvPool_){
+        auto& que = pool.second;
         if(que.empty()) continue;
         std::transform(
             que.front().begin(), que.front().end(),
@@ -60,10 +99,10 @@ void Unit::Socket::emitPool()
                 return t + f;
             }
         );
-        que.pop();
+        que.pop_front();
     }
 
-    parent_->input(wave);
+    parent_.input(wave);
 }
 
 ///
@@ -71,13 +110,19 @@ void Unit::Socket::emitPool()
 Unit::Unit()
     : isAlive_(false)
 {
-    socket_ = std::make_shared<Socket>(this);
+    socket_ = std::make_shared<Socket>(*this);
 }
 
 Unit::~Unit()
 {
     boost::shared_lock<boost::shared_mutex> lock(mtx_);
     assert(!isAlive_);
+}
+
+void Unit::connectTo(const UnitPtr& next)
+{
+    this->socket_->addNextSocket(next->socket_);
+    next->socket_->addPrevSocket(this->socket_);
 }
 
 bool Unit::isAlive()
@@ -93,6 +138,7 @@ void Unit::start()
     if(!isAlive_){
         boost::upgrade_to_unique_lock<boost::shared_mutex> writeLock(readLock);
         isAlive_ = true;
+        socket_->open();
         startImpl();
     }
 }
@@ -104,6 +150,7 @@ void Unit::stop()
     if(isAlive_){
         boost::upgrade_to_unique_lock<boost::shared_mutex> writeLock(readLock);
         isAlive_ = false;
+        socket_->close();
         stopImpl();
     }
 }
@@ -117,6 +164,12 @@ void Unit::input(const PCMWave& wave)
 void Unit::send(const PCMWave& wave)
 {
     socket_->write(wave);
+}
+
+void Unit::setSocketStatus(bool status)
+{
+    if(status)  socket_->open();
+    else        socket_->close();
 }
 
 ///

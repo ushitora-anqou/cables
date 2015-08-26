@@ -41,7 +41,7 @@ public:
 
     bool isAlive() override
     {
-        return recv_->isAlive() && recv_->canSendToNext();
+        return recv_->canSocketSendToNext();
     }
 
     std::string createName() override

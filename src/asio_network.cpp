@@ -28,7 +28,6 @@ ConnectionPtr AsioNetworkBase::createConnection()
 ///
 
 AsioNetworkRecvOutUnit::AsioNetworkRecvOutUnit(unsigned short port)
-    : canSendToNext_(false)
 {
     acceptor_ = createAcceptor(port);
 }
@@ -42,7 +41,7 @@ void AsioNetworkRecvOutUnit::startAccept()
             return;
         }
 
-        canSendToNext_ = true;
+        setSocketStatus(true);
         startRead();
     });
 }
@@ -54,6 +53,7 @@ void AsioNetworkRecvOutUnit::startRead()
 
 void AsioNetworkRecvOutUnit::startImpl()
 {
+    setSocketStatus(false);
     postProc([this]() { startAccept(); });
 }
 
@@ -62,7 +62,7 @@ void AsioNetworkRecvOutUnit::stopImpl()
     postProc([this]() {
         acceptor_->close();
         conn_->getSocket().close();
-        canSendToNext_ = false;
+        setSocketStatus(false);
     });
 }
 
@@ -70,7 +70,7 @@ void AsioNetworkRecvOutUnit::handleRecvWaveData(const boost::system::error_code&
 {
     if(error || !data){
         std::cout << "ASYNC_RECV_ERROR: " << error.message() << std::endl;
-        canSendToNext_ = false;
+        setSocketStatus(false);
         startAccept();
         return;
     }

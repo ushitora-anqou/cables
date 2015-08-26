@@ -19,6 +19,9 @@
     static_assert(sizeof((type)) == size, \
         "The size of \"" BOOST_PP_STRINGIZE((type)) "\" isn't " BOOST_PP_STRINGIZE((size)) " byte(s).");
 
+#define SCOPED_LOCK(mtx) \
+    boost::mutex::scoped_lock lock((mtx));
+
 template <class T, class... Args>
 std::unique_ptr<T> make_unique(Args&&... args)
 {

@@ -29,25 +29,34 @@ private:
     class Socket;
     using SocketPtr = std::shared_ptr<Unit::Socket>;
 
-    class Socket
+    class Socket : public std::enable_shared_from_this<Socket>  // thread safe
     {
         friend void connect(const std::vector<UnitPtr>&, const std::vector<UnitPtr>&);
 
     private:
-        std::map<UnitPtr, std::queue<PCMWave>> pool_;
-        std::vector<SocketPtr> toSockets_;
-        boost::mutex mtx_;
-        Unit *parent_;
+        boost::mutex recvMtx_, sendMtx_;
+        bool canRecvFromPrev_, canSendToNext_;
+        std::vector<SocketPtr> nextSockets_;
+        std::map<SocketPtr, std::deque<PCMWave>> recvPool_;
+        Unit &parent_;
 
     private:
         void emitPool();
 
     public:
-        Socket(Unit *parent);
+        Socket(Unit& parent);
         ~Socket(){}
 
+        void open();
+        void close();
+        void addNextSocket(const SocketPtr& next);
+        void addPrevSocket(const SocketPtr& prev);
+
+        bool canSendToNext() const { return canSendToNext_; }
+        bool canRecvFromPrev() const { return canRecvFromPrev_; }
+        
         void write(const PCMWave& src);
-        void onRecv(const UnitPtr& unit, const PCMWave& src);
+        void onRecv(const SocketPtr& sender, const PCMWave& src);
     };
 
 private:
@@ -57,13 +66,16 @@ private:
 
 protected:
     void send(const PCMWave& wave);
+    void setSocketStatus(bool isOpen);
 
 public:
     Unit();
     virtual ~Unit();
 
+    void connectTo(const UnitPtr& next);
+
     bool isAlive();
-    virtual bool canSendToNext() { return isAlive(); }
+    bool canSocketSendToNext() const { return socket_->canSendToNext(); }
 
     void start();
     void stop();

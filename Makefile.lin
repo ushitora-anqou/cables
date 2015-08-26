@@ -25,6 +25,6 @@ mains/%.o: mains/%.cpp
 	$(CXX) $(FLAGS) -o $@ -c $< -Isrc 
 
 clean: 
-	@rm -f $(OBJS) $(DEPS) $(TARGET)
+	@rm -f $(OBJS) $(DEPS) $(TARGET) mains/mixer.o mains/mic.o
 
 -include $(DEPS)

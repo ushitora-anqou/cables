@@ -3,7 +3,6 @@
 #define ___VIEW_HPP___
 
 #include "pcmwave.hpp"
-#include "units.hpp"
 #include <string>
 #include <vector>
 #include <memory>
@@ -20,15 +19,6 @@ public:
 	virtual ViewPtr createView(int groupSize) = 0;
 	virtual void run() = 0;
 };
-
-/*
-struct Group
-{
-    std::string name;
-    std::weak_ptr<MicOutUnit> mic;
-    std::weak_ptr<VolumeFilter> volume;
-};
-*/
 
 class Group
 {
