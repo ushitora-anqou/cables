@@ -72,6 +72,7 @@ class AsioNetworkRecvOutUnit : public Unit, private AsioNetworkBase
 private:
     std::unique_ptr<boost::asio::ip::tcp::acceptor> acceptor_;
     ConnectionPtr conn_;
+    bool hasConnected_;
 
 private:
     void startAccept();
@@ -79,6 +80,7 @@ private:
 
 public:
     AsioNetworkRecvOutUnit(unsigned short port);
+    ~AsioNetworkRecvOutUnit(){}
 
     void startImpl();
     void stopImpl();
@@ -93,19 +95,20 @@ private:
     unsigned short port_;
     std::string ipaddr_;
     std::deque<std::shared_ptr<WaveData>> waveQue_;
+    bool hasConnected_;
 
 private:
     void startConnect();
     void startSend();
+    void closeConnect();
 
 public:
     AsioNetworkSendInUnit(const unsigned short port, const std::string& ipaddr);
+    ~AsioNetworkSendInUnit(){}
 
     void startImpl();
     void stopImpl();
     void inputImpl(const PCMWave& wave);
-
-    void handleSend(const boost::system::error_code& error, const boost::optional<WaveData>&);
 };
 
 #endif

@@ -1,5 +1,5 @@
 #include "units.hpp"
-#include "view.hpp"
+#include "glutview.hpp"
 #include "helper.hpp"
 #include <cmath>
 #include <algorithm>
@@ -89,12 +89,11 @@ PCMWave MicOutUnit::update()
 
 ///
 
-PrintFilter::PrintFilter(const std::shared_ptr<View>& view, int index)
-    : view_(view), viewIndex_(index)
+PrintInUnit::PrintInUnit(Group& groupInfo)
+    : groupInfo_(groupInfo)
 {}
 
-void PrintFilter::inputImpl(const PCMWave& wave)
+void PrintInUnit::inputImpl(const PCMWave& wave)
 {
-    view_->updateLevelMeter(viewIndex_, *wave.begin());
-    send(wave);
+    groupInfo_.updateWaveLevel(*wave.begin());
 }

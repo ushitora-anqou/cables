@@ -1,7 +1,6 @@
 #include "portaudio.hpp"
 #include "helper.hpp"
 #include "units.hpp"
-#include "unitmanager.hpp"
 #include "glutview.hpp"
 #include "asio_network.hpp"
 #include <boost/algorithm/string.hpp>
@@ -38,6 +37,83 @@ public:
     }
 };
 
+class MicView;
+
+class MicSideGroup : public Group
+{
+    friend class MicView;
+private:
+    std::string name_;
+
+    std::shared_ptr<MicOutUnit> mic_;
+    std::shared_ptr<VolumeFilter> micVolume_;
+
+    std::shared_ptr<SinFakeOutUnit> sin_;
+    std::shared_ptr<VolumeFilter> sinVolume_;
+
+    std::shared_ptr<PrintInUnit> print_;
+    std::shared_ptr<AsioNetworkSendInUnit> send_;
+
+public:
+    MicSideGroup(const std::string& name, std::unique_ptr<AudioStream> micStream, unsigned short port, const std::string& ipAddr)
+        : name_(name)
+    {
+        mic_ = std::make_shared<MicOutUnit>(std::move(micStream));
+        micVolume_ = std::make_shared<VolumeFilter>();
+
+        sin_ = std::make_shared<SinFakeOutUnit>(1000);
+        sin_->setMute(true);
+        sinVolume_ = std::make_shared<VolumeFilter>(5);
+
+        print_ = std::make_shared<PrintInUnit>(*this);
+        send_ = std::make_shared<AsioNetworkSendInUnit>(port, ipAddr);
+
+        connect({mic_}, {micVolume_, sin_});
+        connect({micVolume_}, {print_, send_});
+        connect({sin_}, {sinVolume_});
+        connect({sinVolume_}, {print_, send_});
+    }
+
+    bool isAlive() override
+    {
+        return sin_->canSendContent() || mic_->canSendContent();
+    }
+
+    std::string createName() override
+    {
+        return name_;
+    }
+
+    std::vector<std::string> createOptionalInfo() override
+    {
+        return std::vector<std::string>({
+            toString(micVolume_->getRate()),
+            toString(sinVolume_->getRate())
+        });
+    }
+
+    void start() override
+    {
+        mic_->start();
+        micVolume_->start();
+        sin_->start();
+        sinVolume_->start();
+        print_->start();
+        send_->start();
+    }
+
+    void stop() override
+    {
+        mic_->stop();
+        micVolume_->stop();
+        sin_->stop();
+        sinVolume_->stop();
+        print_->stop();
+        send_->stop();
+    }
+};
+
+/*
 class MicSideGroup : public Group
 {
 private:
@@ -145,6 +221,66 @@ public:
     }
 
 };
+*/
+
+class MicView : public GlutView
+{
+protected:
+    void draw(int index, const GroupPtr& groupInfo)
+    {
+        drawLevelMeter(index, groupInfo);
+    }
+
+    void keyDown(int index, const GroupPtr& groupInfo, unsigned char key)
+    {
+        auto group = std::dynamic_pointer_cast<MicSideGroup>(groupInfo);
+        switch(key)
+        {
+        case 'p':   // trigger-begin
+            group->mic_->setMute(true);
+            group->sin_->setMute(false);
+            break;
+        case 's':
+            // This doesn't guarantee the change of the flag of mute in multi-threading environments.
+            group->mic_->setMute(group->mic_->isMute() ? false : true);
+            group->sin_->setMute(true);
+            break;
+        case 'o':
+            group->micVolume_->addRate(5);
+            break;
+        case 'l':
+            group->micVolume_->addRate(-5);
+            break;
+        case 'i':
+            group->sinVolume_->addRate(5);
+            break;
+        case 'k':
+            group->sinVolume_->addRate(-5);
+            break;
+        case 'f':
+            group->send_->stop();
+            group->send_->start();
+            break;
+        }
+    }
+
+    void keyUp(int index, const GroupPtr& groupInfo, unsigned char key)
+    {
+        auto group = std::dynamic_pointer_cast<MicSideGroup>(groupInfo);
+        switch(key)
+        {
+        case 'p':   // trigger-end
+            group->sin_->setMute(true);
+            group->mic_->setMute(false);
+            break;
+        }
+    }
+
+public:
+    MicView()
+        : GlutView("mic")
+    {}
+};
 
 int main(int argc, char **argv)
 {
@@ -152,7 +288,7 @@ int main(int argc, char **argv)
 
     // User input
     auto devices = system->getValidDevices();
-    indexedForeach(devices, [](int i, AudioDevicePtr& dev){
+    indexedForeach(devices, [](int i, const AudioDevicePtr& dev){
         std::cout <<
             i << ": " << dev->name() <<
             " (i:" << dev->inputChannel() <<
@@ -168,7 +304,26 @@ int main(int argc, char **argv)
         for(auto& token : indexTokens)
             inputDevices.push_back(devices.at(boost::lexical_cast<int>(token)));
     }
- 
+
+    std::shared_ptr<GlutViewSystem> viewSystem = std::make_shared<GlutViewSystem>(argc, argv);
+    std::shared_ptr<MicView> view = std::make_shared<MicView>();
+
+    std::vector<std::shared_ptr<MicSideGroup>> groups;
+    indexedForeach(inputDevices, [&groups, &view, &system](int i, const AudioDevicePtr& dev) {
+        groups.push_back(std::make_shared<MicSideGroup>(
+            dev->name() + toString(i),
+            std::move(system->createInputStream(dev)),
+            12345 + i,
+            "127.0.0.1"
+        ));
+        view->addGroup(groups.front());
+    });
+
+    for(auto& g : groups)   g->start();
+    viewSystem->run();
+    for(auto& g : groups)   g->stop();
+
+/*
     // make and connect units
     UnitManager manager;
 
@@ -186,6 +341,7 @@ int main(int argc, char **argv)
     manager.startAll();
     viewSystem->run();
     manager.stopAll();
+*/
 }
 
 

@@ -6,6 +6,7 @@
 #include "wavefile.hpp"
 #include "audio.hpp"
 #include "socket.hpp"
+#include "group.hpp"
 #include <atomic>
 #include <memory>
 #include <vector>
@@ -137,14 +138,13 @@ public:
     void inputImpl(const PCMWave& wave) { stream_->write(wave); }
 };
 
-class PrintFilter : public Unit
+class PrintInUnit : public Unit
 {
 private:
-	std::shared_ptr<View> view_;
-    int viewIndex_;
+    Group& groupInfo_;
 
 public:
-	PrintFilter(const std::shared_ptr<View>& view, int index);
+	PrintInUnit(Group& groupInfo);
 
 	void inputImpl(const PCMWave& wave);
 };

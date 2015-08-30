@@ -9,6 +9,7 @@
 #include <cmath>
 #include <cassert>
 #include <chrono>
+#include <limits>
 #include <memory>
 #include <vector>
 
@@ -121,5 +122,15 @@ struct Color
     static Color magenta() { return Color(255,   0, 255); }
     static Color gray()    { return Color(128, 128, 128); }
 };
+
+constexpr double infinity() noexcept
+{
+    return std::numeric_limits<double>::infinity();
+}
+
+constexpr double minfinity() noexcept
+{
+    return -std::numeric_limits<double>::infinity();
+}
 
 #endif

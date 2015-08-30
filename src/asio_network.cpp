@@ -28,12 +28,14 @@ ConnectionPtr AsioNetworkBase::createConnection()
 ///
 
 AsioNetworkRecvOutUnit::AsioNetworkRecvOutUnit(unsigned short port)
+    : hasConnected_(false)
 {
     acceptor_ = createAcceptor(port);
 }
 
 void AsioNetworkRecvOutUnit::startAccept()
 {
+    hasConnected_ = false;
     conn_ = createConnection();
     acceptor_->async_accept(conn_->getSocket(),[this](const boost::system::error_code& error) {
         if(error){
@@ -41,6 +43,7 @@ void AsioNetworkRecvOutUnit::startAccept()
             return;
         }
 
+        hasConnected_ = true;
         setSocketStatus(true);
         startRead();
     });
@@ -61,7 +64,8 @@ void AsioNetworkRecvOutUnit::stopImpl()
 {
     postProc([this]() {
         acceptor_->close();
-        conn_->getSocket().close();
+        conn_.reset();
+        hasConnected_ = false;
         setSocketStatus(false);
     });
 }
@@ -71,24 +75,26 @@ void AsioNetworkRecvOutUnit::handleRecvWaveData(const boost::system::error_code&
     if(error || !data){
         std::cout << "ASYNC_RECV_ERROR: " << error.message() << std::endl;
         setSocketStatus(false);
-        startAccept();
+        hasConnected_ = false;
+        if(error == boost::asio::error::eof)    startAccept();
         return;
     }
 
     auto& wave = *data;
     send(wave.data);
-    startRead();
+    if(hasConnected_)   startRead();
 }
 
 ///
 
 AsioNetworkSendInUnit::AsioNetworkSendInUnit(const unsigned short port, const std::string& ipaddr)
-    : port_(port), ipaddr_(ipaddr)
+    : port_(port), ipaddr_(ipaddr), hasConnected_(false)
 {}
 
 void AsioNetworkSendInUnit::startConnect()
 {
     conn_ = createConnection();
+    hasConnected_ = false;
     conn_->getSocket().async_connect(
         boost::asio::ip::tcp::endpoint(boost::asio::ip::address::from_string(ipaddr_), port_),
         [this](const boost::system::error_code& error) {
@@ -96,6 +102,7 @@ void AsioNetworkSendInUnit::startConnect()
                 std::cout << "ASYNC_CONNECT_ERROR: " << error.message() << std::endl;
                 return;
             }
+            hasConnected_ = true;
         }
     );
 }
@@ -107,11 +114,18 @@ void AsioNetworkSendInUnit::startSend()
             waveQue_.pop_front();
             if(error){
                 std::cout << "ASYNC_WRITE_ERROR: " << error.message() << std::endl;
+                closeConnect();
                 return;
             }
             if(!waveQue_.empty())   startSend();
         }
     );
+}
+
+void AsioNetworkSendInUnit::closeConnect()
+{
+    conn_.reset();
+    hasConnected_ = false;
 }
 
 void AsioNetworkSendInUnit::startImpl()
@@ -122,7 +136,7 @@ void AsioNetworkSendInUnit::startImpl()
 void AsioNetworkSendInUnit::stopImpl()
 {
     postProc([this]() {
-        conn_->getSocket().close();
+        closeConnect();
         waveQue_.clear();
     });
 }
@@ -131,7 +145,7 @@ void AsioNetworkSendInUnit::inputImpl(const PCMWave& wave)
 {
     std::shared_ptr<WaveData> data = std::make_shared<WaveData>(wave);
     postProc([this, data]() {
-        if(!conn_->getSocket().is_open()) return;
+        if(!hasConnected_) return;
         bool isProcessing = !waveQue_.empty();
         waveQue_.push_back(data);
         if(!isProcessing)   startSend();

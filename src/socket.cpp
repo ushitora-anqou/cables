@@ -108,7 +108,7 @@ void Unit::Socket::emitPool()
 ///
 
 Unit::Unit()
-    : isAlive_(false)
+    : isAlive_(false), isMute_(false ? 1 : 0), emptyWave_(0)
 {
     socket_ = std::make_shared<Socket>(*this);
 }
@@ -125,10 +125,19 @@ void Unit::connectTo(const UnitPtr& next)
     next->socket_->addPrevSocket(this->socket_);
 }
 
-bool Unit::isAlive()
+void Unit::setMute(bool isMute)
 {
-    //boost::shared_lock<boost::shared_mutex> lock(mtx_);
+    isMute_ = isMute ? 1 : 0;
+}
+
+bool Unit::isAlive() const
+{
     return isAlive_;
+}
+
+bool Unit::isMute() const
+{
+    return isMute_;
 }
 
 void Unit::start()
@@ -163,7 +172,8 @@ void Unit::input(const PCMWave& wave)
 
 void Unit::send(const PCMWave& wave)
 {
-    socket_->write(wave);
+    if(isMute_) socket_->write(emptyWave_);
+    else        socket_->write(wave);
 }
 
 void Unit::setSocketStatus(bool status)

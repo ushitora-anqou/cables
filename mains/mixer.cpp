@@ -1,13 +1,68 @@
 #include "portaudio.hpp"
 #include "helper.hpp"
 #include "units.hpp"
-#include "unitmanager.hpp"
 #include "glutview.hpp"
 #include "asio_network.hpp"
 #include <boost/algorithm/string.hpp>
 #include <iostream>
-#include <unordered_map>
 
+class MixerView;
+
+class MixerSideGroup : public Group
+{
+    friend class MixerView;
+private:
+    std::string name_;
+
+    std::shared_ptr<AsioNetworkRecvOutUnit> recv_;
+    std::shared_ptr<VolumeFilter> volume_;
+    std::shared_ptr<PrintInUnit> print_;
+
+public:
+    MixerSideGroup(unsigned short port, const std::shared_ptr<VolumeFilter>& masterVolume)
+        : name_("conn_" + toString(port))
+    {
+        recv_ = std::make_shared<AsioNetworkRecvOutUnit>(port);
+        volume_ = std::make_shared<VolumeFilter>();
+        print_ = std::make_shared<PrintInUnit>(*this);
+
+        connect({recv_}, {volume_});
+        connect({volume_}, {print_, masterVolume});
+    }
+
+    bool isAlive() override
+    {
+        return recv_->canSendContent();
+    }
+
+    std::string createName() override
+    {
+        return name_;
+    }
+
+    std::vector<std::string> createOptionalInfo() override
+    {
+        return std::vector<std::string>({
+            toString(volume_->getRate())
+        });
+    }
+
+    void start() override
+    {
+        recv_->start();
+        volume_->start();
+        print_->start();
+    }
+
+    void stop() override
+    {
+        recv_->stop();
+        volume_->stop();
+        print_->stop();
+    }
+};
+
+/*
 class MixerSideGroup : public Group
 {
 private:
@@ -74,6 +129,41 @@ public:
         }
     }
 };
+*/
+
+class MixerView : public GlutView
+{
+protected:
+    void draw(int index, const GroupPtr& groupInfo)
+    {
+        drawLevelMeter(index, groupInfo);
+    }
+
+    void keyDown(int index, const GroupPtr& groupInfo, unsigned char key)
+    {
+        auto group = std::dynamic_pointer_cast<MixerSideGroup>(groupInfo);
+        switch(key)
+        {
+        case 's':
+            // intend to xor mute flag
+            // but, not accurate in multi-thrading envirnments
+            // but, this way is VERY VERY EASY!!
+            group->recv_->setMute(!group->recv_->isMute());
+            break;
+        case 'o':
+            group->volume_->addRate(5);
+            break;
+        case 'l':
+            group->volume_->addRate(5);
+            break;
+        }
+    }
+
+public:
+    MixerView()
+        : GlutView("mixer")
+    {}
+};
 
 int main(int argc, char **argv)
 {
@@ -98,6 +188,30 @@ int main(int argc, char **argv)
             outputDevices.push_back(devices.at(boost::lexical_cast<int>(token)));
     }
 
+    auto speaker = std::make_shared<SpeakerInUnit>(
+        system->createOutputStream(system->getDefaultOutputDevice()));
+    auto masterVolume = std::make_shared<VolumeFilter>();
+    connect({masterVolume}, {speaker});
+
+	std::shared_ptr<GlutViewSystem> viewSystem = std::make_shared<GlutViewSystem>(argc, argv);
+    std::shared_ptr<MixerView> view = std::make_shared<MixerView>();
+
+    auto group = std::make_shared<MixerSideGroup>(
+        12345 + 0, masterVolume
+    );
+    view->addGroup(group);
+
+    speaker->start();
+    masterVolume->start();
+    group->start();
+
+    viewSystem->run();
+
+    speaker->stop();
+    masterVolume->stop();
+    group->stop();
+
+/*
     // make and connect units
     UnitManager manager;
 
@@ -128,5 +242,6 @@ int main(int argc, char **argv)
     manager.startAll();
     viewSystem->run();
     manager.stopAll();
+*/
 }
 

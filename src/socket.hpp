@@ -5,6 +5,7 @@
 #include "pcmwave.hpp"
 #include <boost/thread.hpp>
 #include <cstdint>
+#include <atomic>
 #include <map>
 #include <memory>
 #include <queue>
@@ -13,11 +14,6 @@ class Unit;
 
 using UnitPtr = std::shared_ptr<Unit>;
 
-template<class T, class... Args>
-UnitPtr makeUnit(Args&&... args)
-{
-    return UnitPtr(new T(std::forward<Args>(args)...));
-}
 void connect(const std::vector<UnitPtr>& from, const std::vector<UnitPtr>& to);
 
 
@@ -63,6 +59,9 @@ private:
     bool isAlive_;
     boost::shared_mutex mtx_;
     SocketPtr socket_;
+    std::atomic<int> isMute_;
+
+    const PCMWave emptyWave_;
 
 protected:
     void send(const PCMWave& wave);
@@ -73,9 +72,12 @@ public:
     virtual ~Unit();
 
     void connectTo(const UnitPtr& next);
+    void setMute(bool isMute);
 
-    bool isAlive();
+    bool isAlive() const;
+    bool isMute() const;
     bool canSocketSendToNext() const { return socket_->canSendToNext(); }
+    bool canSendContent() const { return isAlive() && !isMute() && canSocketSendToNext(); }
 
     void start();
     void stop();

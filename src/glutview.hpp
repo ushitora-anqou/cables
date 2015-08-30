@@ -2,14 +2,17 @@
 #ifndef ___GLUTVIEW_HPP___
 #define ___GLUTVIEW_HPP___
 
-#include "view.hpp"
 #include "glut.hpp"
+#include "pcmwave.hpp"
 #include "helper.hpp"
+#include "group.hpp"
+#include <vector>
+#include <memory>
 #include <boost/thread.hpp>
 
-class UnitManager;
+class GlutView;
 
-class GlutViewSystem : public ViewSystem
+class GlutViewSystem
 {
 private:
 	static bool isFirst_;
@@ -18,11 +21,10 @@ public:
 	GlutViewSystem(int argc, char **argv);
 	~GlutViewSystem();
 
-	ViewPtr createView(int groupSize);
 	void run();
 };
 
-class GlutView : public View, public glut::Window
+class GlutView : public glut::Window
 {
 private:
     const int
@@ -41,22 +43,12 @@ private:
         OPTIONAL_POS_X = LEVEL_METER_POS_X + LEVEL_METER_WIDTH,
         OPTIONAL_UNIT_WIDTH = 50;
 
-    /*
-	const int
-        LEVEL_METER_DB_MIN = -60,
-        PIXEL_PER_DB = 8,
-        LEVEL_METER_BAR_LENGTH = -LEVEL_METER_DB_MIN * PIXEL_PER_DB, 
-        LEVEL_METER_BAR_HEIGHT = 25,
-        LEVEL_METER_LEFT_MARGIN = 50,
-        LEVEL_METER_RIGHT_MARGIN = 50,
-        WINDOW_WIDTH = LEVEL_METER_LEFT_MARGIN + LEVEL_METER_BAR_LENGTH + LEVEL_METER_RIGHT_MARGIN;
-        */
-
     int groupMask_;
-    boost::mutex mtx_;
-    std::vector<std::pair<double, double>> mtxedDBLevels_;
 
-private:
+    boost::mutex mtx_;
+    std::vector<GroupPtr> groupInfoList_;
+
+protected:
     void displayFunc() override;
 	void reshapeFunc(int w, int h) override;
 	void keyboardFunc(unsigned char key, int x, int y) override;
@@ -67,7 +59,7 @@ private:
     // native draw functions
     void applyColor(const Color& color);
 	template<class Render>
-	void draw(Render render)
+	void drawScoped(Render render)
 	{
 		glClear(GL_COLOR_BUFFER_BIT);
 		render();
@@ -83,12 +75,22 @@ private:
     void drawLevelMeterBack(int index, double widthRatio, const Color& color);
     void drawSelectedUnitMark(int index);
     void drawUnitString(int index, int x, const std::string& msg, const Color& color);
+    void drawLevelMeter(int i, const GroupPtr& groupInfo);
+
+protected:
+    virtual void draw(){}
+    virtual void draw(int index, const GroupPtr& groupInfo){}
+
+    virtual void keyDown(unsigned char key){}
+    virtual void keyDown(int index, const GroupPtr& groupInfo, unsigned char key){}
+    virtual void keyUp(unsigned char key){}
+    virtual void keyUp(int index, const GroupPtr& groupInfo, unsigned char key){}
 
 public:
-    GlutView(int groupSize);
-    ~GlutView(){}
+    GlutView(const std::string& title);
+    virtual ~GlutView(){}
 
-    void updateLevelMeter(int index, const PCMWave::Sample& sample);
+    void addGroup(const GroupPtr& info);
 };
 
 #endif
