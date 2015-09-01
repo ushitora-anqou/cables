@@ -196,20 +196,21 @@ int main(int argc, char **argv)
 	std::shared_ptr<GlutViewSystem> viewSystem = std::make_shared<GlutViewSystem>(argc, argv);
     std::shared_ptr<MixerView> view = std::make_shared<MixerView>();
 
-    auto group = std::make_shared<MixerSideGroup>(
+    std::vector<std::shared_ptr<MixerSideGroup>> groups;
+    groups.push_back(std::make_shared<MixerSideGroup>(
         12345 + 0, masterVolume
-    );
-    view->addGroup(group);
+    ));
+    view->addGroup(groups.back());
 
     speaker->start();
     masterVolume->start();
-    group->start();
+    for(auto& g : groups)   g->start();
 
     viewSystem->run();
 
     speaker->stop();
     masterVolume->stop();
-    group->stop();
+    for(auto& g : groups)   g->stop();
 
 /*
     // make and connect units
