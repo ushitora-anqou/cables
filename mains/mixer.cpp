@@ -133,10 +133,32 @@ public:
 
 class MixerView : public GlutView
 {
+private:
+    std::shared_ptr<VolumeFilter> masterVolume_;
+
 protected:
+    void draw()
+    {
+        drawString(600, 400,
+            toString(masterVolume_->getRate()), Color::blue());
+    }
+
     void draw(int index, const GroupPtr& groupInfo)
     {
         drawLevelMeter(index, groupInfo);
+    }
+
+    void keyDown(unsigned char key)
+    {
+        switch(key)
+        {
+        case 'i':
+            masterVolume_->addRate(5);
+            break;
+        case 'k':
+            masterVolume_->addRate(-5);
+            break;
+        }
     }
 
     void keyDown(int index, const GroupPtr& groupInfo, unsigned char key)
@@ -154,14 +176,14 @@ protected:
             group->volume_->addRate(5);
             break;
         case 'l':
-            group->volume_->addRate(5);
+            group->volume_->addRate(-5);
             break;
         }
     }
 
 public:
-    MixerView()
-        : GlutView("mixer")
+    MixerView(const std::shared_ptr<VolumeFilter>& masterVolume)
+        : GlutView("mixer"), masterVolume_(masterVolume)
     {}
 };
 
@@ -194,7 +216,7 @@ int main(int argc, char **argv)
     connect({masterVolume}, {speaker});
 
 	std::shared_ptr<GlutViewSystem> viewSystem = std::make_shared<GlutViewSystem>(argc, argv);
-    std::shared_ptr<MixerView> view = std::make_shared<MixerView>();
+    std::shared_ptr<MixerView> view = std::make_shared<MixerView>(masterVolume);
 
     std::vector<std::shared_ptr<MixerSideGroup>> groups;
     groups.push_back(std::make_shared<MixerSideGroup>(
