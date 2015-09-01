@@ -133,4 +133,9 @@ constexpr double minfinity() noexcept
     return -std::numeric_limits<double>::infinity();
 }
 
+constexpr double pi() noexcept
+{
+    return 3.14159265358979323846264338;
+}
+
 #endif

@@ -97,3 +97,4 @@ void PrintInUnit::inputImpl(const PCMWave& wave)
 {
     groupInfo_.updateWaveLevel(*wave.begin());
 }
+

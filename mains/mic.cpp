@@ -3,9 +3,26 @@
 #include "units.hpp"
 #include "glutview.hpp"
 #include "asio_network.hpp"
+#include "daisharin.hpp"
 #include <boost/algorithm/string.hpp>
 #include <iostream>
 #include <unordered_map>
+
+class ReverbFilter : public Unit
+{
+private:
+    Daisharin dai_;
+
+public:
+    ReverbFilter(const Daisharin::Config& config)
+        : dai_(config)
+    {}
+
+    void inputImpl(const PCMWave& wave)
+    {
+        send(dai_.update(wave));
+    }
+};
 
 class SinFakeOutUnit : public Unit
 {
@@ -51,6 +68,9 @@ private:
     std::shared_ptr<SinFakeOutUnit> sin_;
     std::shared_ptr<VolumeFilter> sinVolume_;
 
+    std::shared_ptr<ThroughFilter> through_;
+    std::shared_ptr<ReverbFilter> reverb_;
+
     std::shared_ptr<PrintInUnit> print_;
     std::shared_ptr<AsioNetworkSendInUnit> send_;
 
@@ -65,13 +85,24 @@ public:
         sin_->setMute(true);
         sinVolume_ = std::make_shared<VolumeFilter>(5);
 
+        through_ = std::make_shared<ThroughFilter>();
+        Daisharin::Config config;
+        config.delayBufferSize = 600 * PCMWave::SAMPLE_RATE / 1000;
+        config.delayPointsSize = 50;
+        config.reverbTime = 2000;
+        config.tremoloSpeed = 6;
+        config.lpfHighDump = 0.5;
+        reverb_ = std::make_shared<ReverbFilter>(config);
+        reverb_->setMute(true);
+
         print_ = std::make_shared<PrintInUnit>(*this);
         send_ = std::make_shared<AsioNetworkSendInUnit>(port, ipAddr);
 
         connect({mic_}, {micVolume_, sin_});
-        connect({micVolume_}, {print_, send_});
+        connect({micVolume_}, {through_, reverb_});
         connect({sin_}, {sinVolume_});
-        connect({sinVolume_}, {print_, send_});
+        connect({sinVolume_}, {through_, reverb_});
+        connect({through_, reverb_}, {print_, send_});
     }
 
     bool isAlive() override
@@ -98,6 +129,8 @@ public:
         micVolume_->start();
         sin_->start();
         sinVolume_->start();
+        through_->start();
+        reverb_->start();
         print_->start();
         send_->start();
     }
@@ -108,6 +141,8 @@ public:
         micVolume_->stop();
         sin_->stop();
         sinVolume_->stop();
+        through_->stop();
+        reverb_->stop();
         print_->stop();
         send_->stop();
     }
@@ -261,6 +296,10 @@ protected:
             group->send_->stop();
             group->send_->start();
             break;
+        case 'e':
+            group->through_->setMute(true);
+            group->reverb_->setMute(false);
+            break;
         }
     }
 
@@ -272,6 +311,10 @@ protected:
         case 'p':   // trigger-end
             group->sin_->setMute(true);
             group->mic_->setMute(false);
+            break;
+        case 'e':
+            group->reverb_->setMute(true);
+            group->through_->setMute(false);
             break;
         }
     }

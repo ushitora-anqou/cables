@@ -9,15 +9,11 @@ DEPS=$(OBJS:.o=.d)
 LIB=-lboost_thread -lboost_system -lboost_regex -lboost_serialization -lportaudio -lglut -lGLU -lGL -lm
 FLAGS=-g -O0 -std=c++11 -MMD -MP 
 
-all: mixer mic recorder
+MAINS=mixer mic recorder test
 
-mixer: $(OBJS) mains/mixer.o
-	$(CXX) -o $@ $^ $(LIB)
+all: $(MAINS)
 
-mic: $(OBJS) mains/mic.o
-	$(CXX) -o $@ $^ $(LIB)
-
-recorder: $(OBJS) mains/recorder.o
+$(MAINS): %: $(OBJS) mains/%.o
 	$(CXX) -o $@ $^ $(LIB)
 
 $(MEDDIR)/%.o: $(SRCDIR)/%.cpp
@@ -28,6 +24,6 @@ mains/%.o: mains/%.cpp
 	$(CXX) $(FLAGS) -o $@ -c $< -Isrc 
 
 clean: 
-	@rm -f $(OBJS) $(DEPS) $(TARGET) mains/mixer.o mains/mic.o mains/recorder.o
+	@rm -f $(OBJS) $(DEPS) $(TARGET) $(addsuffix .o, $(addprefix mains/, $(MAINS)))
 
--include $(DEPS) mains/mixer.d mains/mic.d mains/recorder.d
+-include $(DEPS) $(addsuffix .d, $(addprefix mains/, $(MAINS)))

@@ -32,10 +32,24 @@ public:
             return *this;
         }
 
+        Sample& operator-=(const Sample& rhs)
+        {
+            left -= rhs.left;
+            right -= rhs.right;
+            return *this;
+        }
+
         Sample& operator*=(double rhs)
         {
             left *= rhs;
             right *= rhs;
+            return *this;
+        }
+
+        Sample& operator/=(double rhs)
+        {
+            left /= rhs;
+            right /= rhs;
             return *this;
         }
 
@@ -46,10 +60,24 @@ public:
             return ret;
         }
 
+        Sample operator-(const Sample& rhs) const
+        {
+            Sample ret(*this);
+            ret -= rhs;
+            return ret;
+        }
+
         Sample operator*(double rhs) const
         {
             Sample ret(*this);
             ret *= rhs;
+            return ret;
+        }
+
+        Sample operator/(double rhs) const
+        {
+            Sample ret(*this);
+            ret /= rhs;
             return ret;
         }
     };

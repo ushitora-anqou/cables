@@ -51,6 +51,17 @@ public:
     }
 };
 
+class ThroughFilter : public Unit
+{
+public:
+    ThroughFilter(){}
+
+    void inputImpl(const PCMWave& wave)
+    {
+        send(wave);
+    }
+};
+
 class OnOffFilter : public Unit
 {
 private:
