@@ -10,13 +10,23 @@ void connect(const std::vector<UnitPtr>& prevUnits, const std::vector<UnitPtr>& 
             prev->connectTo(next);
 }
 
+bool isAvailableSocket(const SocketPtr& socket)
+{
+    if(!socket->canSendToNext())    return false;   // 通行止め
+    if(socket->recvPool_.empty())   return true;    // 終着点
+    for(auto& item : socket->recvPool_){
+        if(isAvailableSocket(item.first))   return true;
+    }
+    return false;
+}
+
 ///
 
-Unit::Socket::Socket(Unit& parent)
+Socket::Socket(Unit& parent)
     : canRecvFromPrev_(false), canSendToNext_(false), parent_(parent)
 {}
 
-void Unit::Socket::open()
+void Socket::open()
 {
     {
         SCOPED_LOCK(sendMtx_);
@@ -28,7 +38,7 @@ void Unit::Socket::open()
     }
 }
 
-void Unit::Socket::close()
+void Socket::close()
 {
     {
         SCOPED_LOCK(sendMtx_);
@@ -42,19 +52,19 @@ void Unit::Socket::close()
     }
 }
 
-void Unit::Socket::addNextSocket(const SocketPtr& next)
+void Socket::addNextSocket(const SocketPtr& next)
 {
     SCOPED_LOCK(sendMtx_);
     nextSockets_.push_back(next);
 }
 
-void Unit::Socket::addPrevSocket(const SocketPtr& prev)
+void Socket::addPrevSocket(const SocketPtr& prev)
 {
     SCOPED_LOCK(recvMtx_);
     recvPool_.insert(std::make_pair(prev, std::deque<PCMWave>()));
 }
 
-void Unit::Socket::write(const PCMWave& src)
+void Socket::write(const PCMWave& src)
 {
     SCOPED_LOCK(sendMtx_);
     if(!canSendToNext_) return;
@@ -63,7 +73,7 @@ void Unit::Socket::write(const PCMWave& src)
         socket->onRecv(shared_from_this(), src);
 }
 
-void Unit::Socket::onRecv(const SocketPtr& sender, const PCMWave& src)
+void Socket::onRecv(const SocketPtr& sender, const PCMWave& src)
 {
     // 受け取れる状態をこの関数内で保証
     SCOPED_LOCK(recvMtx_);
@@ -72,20 +82,19 @@ void Unit::Socket::onRecv(const SocketPtr& sender, const PCMWave& src)
     recvPool_.at(sender).push_back(src);
 
     // 全てのUnitからRecvしたか
-    // canSendToNext() == true であるUnitのみRecvを待つ
     // 先にQueueの判定をして、Queueに溜まっていれば生死に関わらずそれの処理を行う
     if(std::all_of(recvPool_.begin(), recvPool_.end(),
         [](const std::pair<SocketPtr, std::deque<PCMWave>>& item) {
-            auto& socket = *item.first;
+            auto& socket = item.first;
             auto& que = item.second;
-            return !que.empty() || !socket.canSendToNext();
+            return !que.empty() || !isAvailableSocket(socket);
         }))
     {
         emitPool();
     }
 }
 
-void Unit::Socket::emitPool()
+void Socket::emitPool()
 {
     PCMWave wave;
     wave.fill(PCMWave::Sample(0, 0));
