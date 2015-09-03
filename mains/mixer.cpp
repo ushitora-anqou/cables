@@ -193,13 +193,7 @@ int main(int argc, char **argv)
 
     // User input
     auto devices = system->getValidDevices();
-    indexedForeach(devices, [](int i, AudioDevicePtr& dev){
-        std::cout <<
-            i << ": " << dev->name() <<
-            " (i:" << dev->inputChannel() <<
-            " ,o:" << dev->outputChannel() <<
-            ")" << std::endl;
-    });
+    writeDeviceInfo(std::cout, devices);
     std::vector<AudioDevicePtr> inputDevices, outputDevices;
     {
         std::cout << "Output indexes :" << std::flush;

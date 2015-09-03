@@ -6,6 +6,7 @@
 #include <boost/preprocessor.hpp>
 #include <boost/thread.hpp>
 #include <boost/lexical_cast.hpp>
+#include "audio.hpp"
 #include <cmath>
 #include <cassert>
 #include <chrono>
@@ -136,6 +137,17 @@ constexpr double minfinity() noexcept
 constexpr double pi() noexcept
 {
     return 3.14159265358979323846264338;
+}
+
+inline void writeDeviceInfo(std::ostream& os, const std::vector<AudioDevicePtr>& devices)
+{
+    indexedForeach(devices, [&os](int i, const AudioDevicePtr& dev){
+        os <<
+            i << ": " << dev->name() <<
+            " (i:" << dev->inputChannel() <<
+            " ,o:" << dev->outputChannel() <<
+            ")" << std::endl;
+    });
 }
 
 #endif
