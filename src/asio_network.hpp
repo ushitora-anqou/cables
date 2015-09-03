@@ -57,6 +57,7 @@ public:
     AsioNetworkBase();
     virtual ~AsioNetworkBase();
 
+    void kill();
     std::unique_ptr<boost::asio::ip::tcp::acceptor> createAcceptor(unsigned short port);
     ConnectionPtr createConnection();
 
@@ -80,7 +81,7 @@ private:
 
 public:
     AsioNetworkRecvOutUnit(unsigned short port);
-    ~AsioNetworkRecvOutUnit(){}
+    ~AsioNetworkRecvOutUnit();
 
     void startImpl();
     void stopImpl();
@@ -104,7 +105,7 @@ private:
 
 public:
     AsioNetworkSendInUnit(const unsigned short port, const std::string& ipaddr);
-    ~AsioNetworkSendInUnit(){}
+    ~AsioNetworkSendInUnit();
 
     void startImpl();
     void stopImpl();

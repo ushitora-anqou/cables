@@ -9,8 +9,15 @@ AsioNetworkBase::AsioNetworkBase()
 
 AsioNetworkBase::~AsioNetworkBase()
 {
-    work_.reset();
-    ioServer_->join();
+    kill();
+}
+
+void AsioNetworkBase::kill()
+{
+    if(work_){
+        work_.reset();
+        ioServer_->join();
+    }
 }
 
 std::unique_ptr<boost::asio::ip::tcp::acceptor> AsioNetworkBase::createAcceptor(unsigned short port)
@@ -31,6 +38,11 @@ AsioNetworkRecvOutUnit::AsioNetworkRecvOutUnit(unsigned short port)
     : hasConnected_(false)
 {
     acceptor_ = createAcceptor(port);
+}
+
+AsioNetworkRecvOutUnit::~AsioNetworkRecvOutUnit()
+{
+    kill();
 }
 
 void AsioNetworkRecvOutUnit::startAccept()
@@ -90,6 +102,11 @@ void AsioNetworkRecvOutUnit::handleRecvWaveData(const boost::system::error_code&
 AsioNetworkSendInUnit::AsioNetworkSendInUnit(const unsigned short port, const std::string& ipaddr)
     : port_(port), ipaddr_(ipaddr), hasConnected_(false)
 {}
+
+AsioNetworkSendInUnit::~AsioNetworkSendInUnit()
+{
+    kill();
+}
 
 void AsioNetworkSendInUnit::startConnect()
 {

@@ -111,7 +111,13 @@ private:
 
 #ifndef NO_FREEGLUT
     static void closeFuncSelect() {
-        getWins()[glutGetWindow()]->closeFunc();
+        // 20150903
+        // 現在のViewSystemの実装だと、ここを通るときには
+        // Viewが破棄されてしまっている。そのため、
+        // Segmentation Faultで落ちる。
+        // 改善方法見当たらず。とりあえずコメントアウト。
+        // Glutは不思議な仕様が多すぎる。
+        //getWins()[glutGetWindow()]->closeFunc();
     }
 #endif
 

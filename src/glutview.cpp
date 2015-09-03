@@ -37,7 +37,7 @@ GlutView::GlutView(const std::string& title)
     glClearColor(1.0, 1.0, 1.0, 1.0);
 	glut::IgnoreKeyRepeat(GL_TRUE);
 	//glut::SetOption(GLUT_ACTION_ON_WINDOW_CLOSE, GLUT_ACTION_CONTINUE_EXECUTION);
-	glut::SetOption(GLUT_ACTION_ON_WINDOW_CLOSE, GLUT_ACTION_GLUTMAINLOOP_RETURNS);
+	//glut::SetOption(GLUT_ACTION_ON_WINDOW_CLOSE, GLUT_ACTION_GLUTMAINLOOP_RETURNS);
 
 
 }

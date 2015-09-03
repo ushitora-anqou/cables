@@ -362,7 +362,6 @@ int main(int argc, char **argv)
         viewSystem.run();
     });
     std::string input;
-    std::cout << "DEBUG" << std::endl;
     while(std::getline(std::cin, input)){
         std::cout << input << std::endl;
         if(input == "quit") break;
