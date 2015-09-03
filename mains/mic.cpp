@@ -327,69 +327,45 @@ public:
 
 int main(int argc, char **argv)
 {
-    std::shared_ptr<AudioSystem> system(std::make_shared<PAAudioSystem>());
-
-    // User input
-    auto devices = system->getValidDevices();
-    writeDeviceInfo(std::cout, devices);
-    std::vector<AudioDevicePtr> inputDevices;
-    {
-        std::cout << "Input indexes :" << std::flush;
-        std::string input;  std::getline(std::cin, input);
-        std::vector<std::string> indexTokens;
-        boost::split(indexTokens, input, boost::is_space());
-        for(auto& token : indexTokens)
-            inputDevices.push_back(devices.at(boost::lexical_cast<int>(token)));
-    }
-
+    auto audioSystem = std::make_shared<PAAudioSystem>();
     auto& viewSystem = GlutViewSystem::getInstance();
-    std::shared_ptr<MicView> view = std::make_shared<MicView>();
-
-    std::vector<std::shared_ptr<MicSideGroup>> groups;
-    indexedForeach(inputDevices, [&groups, &view, &system](int i, const AudioDevicePtr& dev) {
-        groups.push_back(std::make_shared<MicSideGroup>(
-            dev->name() + toString(i),
-            std::move(system->createInputStream(dev)),
-            12345 + i,
-            "127.0.0.1"
-        ));
-        view->addGroup(groups.front());
-    });
-
-    for(auto& g : groups)   g->start();
+    auto view = std::make_shared<MicView>();
 
     boost::thread viewThread([&viewSystem]() {
         viewSystem.run();
     });
+
+    std::vector<std::shared_ptr<MicSideGroup>> groups;
     std::string input;
     while(std::getline(std::cin, input)){
-        std::cout << input << std::endl;
-        if(input == "quit") break;
+        const static std::unordered_map<std::string, boost::function<void(const std::vector<std::string>&)>> procs = {
+            {"devices", [&audioSystem](const std::vector<std::string>&) {
+                writeDeviceInfo(std::cout, audioSystem->getValidDevices());
+            }},
+            {"start_in",   [&groups, &view, &audioSystem](const std::vector<std::string>& args) {
+                int index = boost::lexical_cast<int>(args.at(1));
+                auto device = audioSystem->getValidDevices().at(index);
+                groups.push_back(std::make_shared<MicSideGroup>(
+                    device->name(),
+                    std::move(audioSystem->createInputStream(device)),
+                    12345 + groups.size(),
+                    "127.0.0.1"
+                ));
+                view->addGroup(groups.back());
+                groups.back()->start();
+            }},
+        };
+        std::vector<std::string> args;
+        boost::split(args, input, boost::is_space());
+        if(args.front() == "quit")  break;
+        procs.at(args.front())(args);
     }
+
     viewSystem.stop();
     viewThread.join();
 
     for(auto& g : groups)   g->stop();
 
-/*
-    // make and connect units
-    UnitManager manager;
-
-    // make output unit and group
-	std::shared_ptr<ViewSystem> viewSystem(std::make_shared<GlutViewSystem>(argc, argv));
-    auto view = viewSystem->createView(inputDevices.size());
-    indexedForeach(inputDevices, [&manager, &system, &view](int i, const AudioDevicePtr& dev) {
-        auto info = std::make_shared<MicSideGroup>(
-            manager, system, dev, view, i, "127.0.0.1", 12345 + i
-        );
-        view->setGroup(i, info);
-    });
-
-    // run
-    manager.startAll();
-    viewSystem->run();
-    manager.stopAll();
-*/
+    std::cout << "SUCCESSFULLY" << std::endl;
 }
-
 
