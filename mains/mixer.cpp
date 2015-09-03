@@ -209,7 +209,7 @@ int main(int argc, char **argv)
     auto masterVolume = std::make_shared<VolumeFilter>();
     connect({masterVolume}, {speaker});
 
-	std::shared_ptr<GlutViewSystem> viewSystem = std::make_shared<GlutViewSystem>(argc, argv);
+    auto& viewSystem = GlutViewSystem::getInstance();
     std::shared_ptr<MixerView> view = std::make_shared<MixerView>(masterVolume);
 
     std::vector<std::shared_ptr<MixerSideGroup>> groups;
@@ -222,7 +222,16 @@ int main(int argc, char **argv)
     masterVolume->start();
     for(auto& g : groups)   g->start();
 
-    viewSystem->run();
+    boost::thread viewThread([&viewSystem]() {
+        viewSystem.run();
+    });
+    std::string input;
+    while(std::getline(std::cin, input)){
+        std::cout << input << std::endl;
+        if(input == "quit") break;
+    }
+    viewSystem.stop();
+    viewThread.join();
 
     speaker->stop();
     masterVolume->stop();

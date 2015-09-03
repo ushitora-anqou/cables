@@ -1,30 +1,12 @@
 #include "glutview.hpp"
 #include <boost/lexical_cast.hpp>
 
-/*
-ViewPtr GlutViewSystem::createView()
+GlutViewSystem::GlutViewSystem()
+    : hasFinished_(true)
 {
-	auto view = std::make_shared<GlutView>(viewSize);
-	view->createTimer(50, 0);
-	view->show();
-	glClearColor(1.0, 1.0, 1.0, 1.0);
-	glut::IgnoreKeyRepeat(GL_TRUE);
-	//glut::SetOption(GLUT_ACTION_ON_WINDOW_CLOSE, GLUT_ACTION_CONTINUE_EXECUTION);
-	glut::SetOption(GLUT_ACTION_ON_WINDOW_CLOSE, GLUT_ACTION_GLUTMAINLOOP_RETURNS);
-
-	return view;
-}
-*/
-
-bool GlutViewSystem::isFirst_ = true;
-
-GlutViewSystem::GlutViewSystem(int argc, char **argv)
-{
-	if(isFirst_){
-		isFirst_ = false;
-		glut::Init(argc, argv);
-		glut::InitDisplayMode(GLUT_DOUBLE | GLUT_RGBA);
-	}
+    char *dummyArgv[] = {"dummy_name"};
+    glut::Init(1, dummyArgv);
+    glut::InitDisplayMode(GLUT_DOUBLE | GLUT_RGBA);
 }
 
 GlutViewSystem::~GlutViewSystem()
@@ -33,8 +15,16 @@ GlutViewSystem::~GlutViewSystem()
 
 void GlutViewSystem::run()
 {
-	glut::MainLoop();
-	std::cout << "MAINLOOP_END" << std::endl;
+    assert(hasFinished_ == true);
+    hasFinished_ = false;
+    while(!hasFinished_){
+        glutMainLoopEvent();
+    }
+}
+
+void GlutViewSystem::stop()
+{
+    hasFinished_ = true;
 }
 
 ///
@@ -189,14 +179,6 @@ void GlutView::keyboardFunc(unsigned char key, int x, int y)
             keyDown(i, groupInfo, key);
         });
         keyDown(key);
-    }
-
-    // global process
-	switch(key)
-	{
-	case '\033':    // ESC
-        glutLeaveMainLoop();
-        break;
     }
 }
 

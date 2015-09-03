@@ -123,7 +123,7 @@ int main(int argc, char **argv)
     });
 
 
-    std::shared_ptr<GlutViewSystem> viewSystem = std::make_shared<GlutViewSystem>(argc, argv);
+    auto& viewSystem = GlutViewSystem::getInstance();
     std::shared_ptr<RecorderView> view = std::make_shared<RecorderView>();
 
     std::vector<std::shared_ptr<RecorderGroup>> groups;
@@ -140,7 +140,17 @@ int main(int argc, char **argv)
 
     for(auto& g : groups)   g->start();
     for(auto& u : inputUnits)   u->start();
-    viewSystem->run();
+
+    boost::thread viewThread([&viewSystem]() {
+        viewSystem.run();
+    });
+    std::string input;
+    while(std::getline(std::cin, input)){
+        if(input == "quit") break;
+    }
+    viewSystem.stop();
+    viewThread.join();
+
     for(auto& g : groups)   g->stop();
     for(auto& u : inputUnits)   u->stop();
 }

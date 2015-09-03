@@ -342,7 +342,7 @@ int main(int argc, char **argv)
             inputDevices.push_back(devices.at(boost::lexical_cast<int>(token)));
     }
 
-    std::shared_ptr<GlutViewSystem> viewSystem = std::make_shared<GlutViewSystem>(argc, argv);
+    auto& viewSystem = GlutViewSystem::getInstance();
     std::shared_ptr<MicView> view = std::make_shared<MicView>();
 
     std::vector<std::shared_ptr<MicSideGroup>> groups;
@@ -357,7 +357,19 @@ int main(int argc, char **argv)
     });
 
     for(auto& g : groups)   g->start();
-    viewSystem->run();
+
+    boost::thread viewThread([&viewSystem]() {
+        viewSystem.run();
+    });
+    std::string input;
+    std::cout << "DEBUG" << std::endl;
+    while(std::getline(std::cin, input)){
+        std::cout << input << std::endl;
+        if(input == "quit") break;
+    }
+    viewSystem.stop();
+    viewThread.join();
+
     for(auto& g : groups)   g->stop();
 
 /*

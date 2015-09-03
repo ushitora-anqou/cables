@@ -6,16 +6,41 @@
 #include "pcmwave.hpp"
 #include "helper.hpp"
 #include "group.hpp"
-#include <vector>
-#include <memory>
 #include <boost/thread.hpp>
+#include <atomic>
+#include <memory>
+#include <vector>
 
 class GlutView;
 
 class GlutViewSystem
 {
 private:
+    bool hasFinished_;
+
+private:
+    GlutViewSystem();
+    ~GlutViewSystem();
+    // non-copyable
+    GlutViewSystem(const GlutViewSystem&);
+    GlutViewSystem& operator=(const GlutViewSystem&);
+
+public:
+    static GlutViewSystem& getInstance()    // maybe not thread safe
+    {
+        static GlutViewSystem instance;
+        return instance;
+    }
+    void run();
+    void stop();
+};
+
+/*
+class GlutViewSystem
+{
+private:
 	static bool isFirst_;
+    bool hasFinished_;
 
 public:
 	GlutViewSystem(int argc, char **argv);
@@ -23,6 +48,7 @@ public:
 
 	void run();
 };
+*/
 
 class GlutView : public glut::Window
 {
