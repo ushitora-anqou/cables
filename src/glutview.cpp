@@ -152,7 +152,7 @@ void GlutView::displayFunc()
         indexedForeach(groupInfoList_, [this](int i, const GroupPtr& groupInfo) {
             draw(i, groupInfo);
 		});
-        draw();
+        draw(groupInfoList_);
 	});
 }
 
@@ -178,7 +178,7 @@ void GlutView::keyboardFunc(unsigned char key, int x, int y)
             if(!(groupMask_ & (1 << i)))    return;
             keyDown(i, groupInfo, key);
         });
-        keyDown(key);
+        keyDown(groupInfoList_, key);
     }
 }
 
@@ -196,7 +196,7 @@ void GlutView::keyboardUpFunc(unsigned char key, int x, int y)
             if(!(groupMask_ & (1 << i)))    return;
             keyUp(i, groupInfo, key);
         });
-        keyUp(key);
+        keyUp(groupInfoList_, key);
     }
 
 

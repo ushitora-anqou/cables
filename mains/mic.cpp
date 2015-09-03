@@ -266,15 +266,32 @@ protected:
         drawLevelMeter(index, groupInfo);
     }
 
+    void keyDown(const std::vector<GroupPtr>& groups, unsigned char key)
+    {
+        switch(key)
+        {
+        case 'p':   // trigger-begin
+            for(auto& g : groups){
+                auto gd = std::dynamic_pointer_cast<MicSideGroup>(g);
+                gd->mic_->setMute(true);
+                gd->sin_->setMute(false);
+            }
+            break;
+        case 'e':   // trigger-begin
+            for(auto& g : groups){
+                auto gd = std::dynamic_pointer_cast<MicSideGroup>(g);
+                gd->through_->setMute(true);
+                gd->reverb_->setMute(false);
+            }
+            break;
+        }
+    }
+
     void keyDown(int index, const GroupPtr& groupInfo, unsigned char key)
     {
         auto group = std::dynamic_pointer_cast<MicSideGroup>(groupInfo);
         switch(key)
         {
-        case 'p':   // trigger-begin
-            group->mic_->setMute(true);
-            group->sin_->setMute(false);
-            break;
         case 's':
             // This doesn't guarantee the change of the flag of mute in multi-threading environments.
             group->mic_->setMute(group->mic_->isMute() ? false : true);
@@ -296,26 +313,26 @@ protected:
             group->send_->stop();
             group->send_->start();
             break;
-        case 'e':
-            group->through_->setMute(true);
-            group->reverb_->setMute(false);
-            break;
         }
     }
 
-    void keyUp(int index, const GroupPtr& groupInfo, unsigned char key)
+    void keyUp(const std::vector<GroupPtr>& groups, unsigned char key)
     {
-        auto group = std::dynamic_pointer_cast<MicSideGroup>(groupInfo);
         switch(key)
         {
         case 'p':   // trigger-end
-            group->sin_->setMute(true);
-            group->mic_->setMute(false);
+            for(auto& g : groups){
+                auto gd = std::dynamic_pointer_cast<MicSideGroup>(g);
+                gd->sin_->setMute(true);
+                gd->mic_->setMute(false);
+            }
             break;
-        case 'e':
-            group->reverb_->setMute(true);
-            group->through_->setMute(false);
-            break;
+        case 'e':   // trigger-end
+            for(auto& g : groups){
+                auto gd = std::dynamic_pointer_cast<MicSideGroup>(g);
+                gd->reverb_->setMute(true);
+                gd->through_->setMute(false);
+            }
         }
     }
 

@@ -104,12 +104,12 @@ protected:
     void drawLevelMeter(int i, const GroupPtr& groupInfo);
 
 protected:
-    virtual void draw(){}
+    virtual void draw(const std::vector<GroupPtr>& groups){}
     virtual void draw(int index, const GroupPtr& groupInfo){}
 
-    virtual void keyDown(unsigned char key){}
+    virtual void keyDown(const std::vector<GroupPtr>& groups, unsigned char key){}
     virtual void keyDown(int index, const GroupPtr& groupInfo, unsigned char key){}
-    virtual void keyUp(unsigned char key){}
+    virtual void keyUp(const std::vector<GroupPtr>& groups, unsigned char key){}
     virtual void keyUp(int index, const GroupPtr& groupInfo, unsigned char key){}
 
 public:

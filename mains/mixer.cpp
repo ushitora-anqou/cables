@@ -79,7 +79,7 @@ protected:
         drawLevelMeter(index, groupInfo);
     }
 
-    void keyDown(unsigned char key)
+    void keyDown(const std::vector<GroupPtr>& groups, unsigned char key)
     {
         switch(key)
         {
