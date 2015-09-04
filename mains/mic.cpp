@@ -254,12 +254,14 @@ int main(int argc, char **argv)
                     }},
                     {"start_in",   [&groups, &view, &audioSystem](const std::vector<std::string>& args) {
                         int index = boost::lexical_cast<int>(args.at(1));
+                        const std::string ip = args.at(2);
+                        unsigned short port = boost::lexical_cast<unsigned short>(args.at(3));
                         auto device = audioSystem->getValidDevices().at(index);
                         auto group = std::make_shared<MicSideGroup>(
                             device->name(),
                             std::move(audioSystem->createInputStream(device)),
-                            12345 + groups.size(),
-                            "127.0.0.1"
+                            port,
+                            ip
                         );
                         group->start();
                         view->addGroup(group);

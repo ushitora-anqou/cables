@@ -1,10 +1,21 @@
 #include "asio_network.hpp"
 #include "helper.hpp"
+#include "error.hpp"
 
 AsioNetworkBase::AsioNetworkBase()
 {
     work_ = make_unique<boost::asio::io_service::work>(ioService_);
-    ioServer_ = make_unique<boost::thread>([this]() { ioService_.run(); });
+    ioServer_ = make_unique<boost::thread>([this]() {
+        try{
+            ioService_.run();
+        }
+        catch(std::exception& ex){
+            ZARU_CHECK(ex.what());
+        }
+        catch(...){
+            ZARU_CHECK("fatal error");
+        }
+    });
 }
 
 AsioNetworkBase::~AsioNetworkBase()

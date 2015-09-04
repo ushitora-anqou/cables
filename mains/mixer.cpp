@@ -146,9 +146,10 @@ int main(int argc, char **argv)
                         }},
                         {"start_in",   [&groups, &view, &audioSystem, &masterVolume](const std::vector<std::string>& args) {
                             int index = boost::lexical_cast<int>(args.at(1));
+                            unsigned short port = boost::lexical_cast<unsigned short>(args.at(2));
                             auto device = audioSystem->getValidDevices().at(index);
                             auto group = std::make_shared<MixerSideGroup>(
-                                12345 + groups.size(),
+                                port,
                                 masterVolume
                             );
                             group->start();
