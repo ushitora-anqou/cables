@@ -1,8 +1,28 @@
 #include "portaudio.hpp"
 #include "helper.hpp"
-#include <cassert>
+#include "error.hpp"
 #include <algorithm>
-#include <array>
+
+std::array<float, PCMWave::BUFFER_SIZE * 2> wave2float(const PCMWave& src)
+{
+    std::array<float, PCMWave::BUFFER_SIZE * 2> ret;
+    auto it = ret.begin();
+    for(auto& s : src){
+        *(it++) = s.left;
+        *(it++) = s.right;
+    }
+    return std::move(ret);
+}
+
+PCMWave float2wave(const std::array<float, PCMWave::BUFFER_SIZE>& src)
+{
+    PCMWave ret;
+    std::transform(src.begin(), src.end(), ret.begin(),
+        [](float s) { return PCMWave::Sample(s, s); });
+    return std::move(ret);
+}
+
+///
 
 bool PAAudioSystem::isFirst_ = true;
 
@@ -20,34 +40,31 @@ PAAudioStream::PAAudioStream(PaStream *stream)
 
 PAAudioStream::~PAAudioStream()
 {
-    assert(Pa_CloseStream(stream_) == paNoError);
+    ZARU_CHECK_IF(Pa_CloseStream(stream_) != paNoError);
 }
 
 void PAAudioStream::start()
 {
-    assert(Pa_StartStream(stream_) == paNoError);
+    ZARU_THROW_UNLESS(Pa_StartStream(stream_) == paNoError);
 }
 
 void PAAudioStream::stop()
 {
-    assert(Pa_StopStream(stream_) == paNoError);
+    ZARU_THROW_UNLESS(Pa_StopStream(stream_) == paNoError);
 }
 
 PCMWave PAAudioStream::read()
 {
     std::array<float, PCMWave::BUFFER_SIZE> buffer;
-    assert(Pa_ReadStream(stream_, buffer.data(), PCMWave::BUFFER_SIZE) == paNoError);
+    ZARU_THROW_UNLESS(Pa_ReadStream(stream_, buffer.data(), PCMWave::BUFFER_SIZE) == paNoError);
     PCMWave ret;
-    std::transform(buffer.begin(), buffer.end(), ret.begin(),
-        [](float s) { return PCMWave::Sample(s, s); });
-    return std::move(ret);
+    return std::move(float2wave(buffer));
 }
 
-#include <iostream>
 void PAAudioStream::write(const PCMWave& wave)
 {
     auto ret = Pa_WriteStream(stream_, wave2float(wave).data(), PCMWave::BUFFER_SIZE);
-    assert(ret == paNoError || ret == paOutputUnderflowed);
+    ZARU_THROW_UNLESS(ret == paNoError || ret == paOutputUnderflowed);
 }
 
 ///
@@ -93,7 +110,7 @@ std::unique_ptr<AudioStream> PAAudioSystem::createInputStream(const AudioDeviceP
     inputParam.hostApiSpecificStreamInfo = NULL;
 
     PaStream *stream = NULL;
-    assert(Pa_OpenStream(
+    ZARU_THROW_UNLESS(Pa_OpenStream(
         &stream,
         &inputParam,
         NULL,
@@ -120,7 +137,7 @@ std::unique_ptr<AudioStream> PAAudioSystem::createOutputStream(const AudioDevice
     outputParam.hostApiSpecificStreamInfo = NULL;
 
     PaStream *stream = NULL;
-    assert(Pa_OpenStream(
+    ZARU_THROW_UNLESS(Pa_OpenStream(
         &stream,
         NULL,
         &outputParam,

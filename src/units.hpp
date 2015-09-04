@@ -13,28 +13,6 @@
 
 class View;
 
-class PumpOutUnit : public WaitThreadOutUnit
-{
-public:
-    PumpOutUnit(){}
-    ~PumpOutUnit(){}
-
-    PCMWave update();
-};
-
-class SinOutUnit : public WaitThreadOutUnit
-{
-private:
-    std::vector<double> sinTable_;
-    int p_;
-
-public:
-    SinOutUnit(int f);
-    ~SinOutUnit(){}
-
-    PCMWave update();
-};
-
 class FileInUnit : public Unit
 {
 private:
@@ -62,59 +40,19 @@ public:
     }
 };
 
-class OnOffFilter : public Unit
-{
-private:
-    std::atomic<int> isOn_;
-    const PCMWave emptyWave_;
-
-public:
-    OnOffFilter(bool init = true)
-        : isOn_(init ? 1 : 0), emptyWave_(0)
-    {
-    }
-
-    void inputImpl(const PCMWave& wave)
-    {
-        if(isOn_)   send(wave);
-        else    send(emptyWave_);
-    }
-
-    void set(bool flag)
-    {
-        isOn_ = flag ? 1 : 0;
-    }
-
-    void turn()
-    {
-        isOn_ ^= 1;
-    }
-
-    bool isOn()
-    {
-        return isOn_;
-    }
-
-    bool isOff()
-    {
-        return !isOn_;
-    }
-};
-
 class VolumeFilter : public Unit
 {
 private:
-    boost::mutex mtx_;
-    int rate_;  // no effect = 100
+    std::atomic<int> volume_;   // no effect is 100
 
 public:
-    VolumeFilter(int rate = 100)
-        : rate_(rate)
+    VolumeFilter(int volume = 100)
+        : volume_(volume)
     {}
 
-    void setRate(int rate);
-    void addRate(int interval);
-    int getRate();
+    void setVolume(int volume);
+    void addVolume(int diff);
+    int getVolume();
 
     void inputImpl(const PCMWave& wave);
 };
@@ -130,7 +68,7 @@ public:
 
     void construct();
     PCMWave update();
-    void destruct();
+    void destruct() noexcept;
 };
 
 class SpeakerInUnit : public Unit

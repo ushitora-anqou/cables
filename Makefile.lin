@@ -1,29 +1,32 @@
-TARGET=cables
 CXX=g++
-SRCDIR=src
-MEDDIR=med
+SRC_DIR=src
+MED_DIR=med
+MAINS_DIR=mains
 
-CPPS=$(notdir $(wildcard $(SRCDIR)/*.cpp))	# ソースの複数階層に対応していない
-OBJS=$(addprefix $(MEDDIR)/, $(CPPS:.cpp=.o))
+CPPS=$(notdir $(wildcard $(SRC_DIR)/*.cpp))	# ソースの複数階層に対応していない
+OBJS=$(addprefix $(MED_DIR)/, $(CPPS:.cpp=.o))
 DEPS=$(OBJS:.o=.d)
 LIB=-lboost_thread -lboost_system -lboost_regex -lboost_serialization -lportaudio -lglut -lGLU -lGL -lm
-FLAGS=-g -O0 -std=c++11 -MMD -MP 
+FLAGS=-g -O0 -std=c++11 -MMD -MP
+#FLAGS=-O3 -std=c++11
 
 MAINS=mixer mic recorder test
+MAINS_OBJS=$(addsuffix .o, $(addprefix mains/, $(MAINS)))
+MAINS_DEPS=$(addsuffix .d, $(addprefix mains/, $(MAINS)))
 
 all: $(MAINS)
 
-$(MAINS): %: $(OBJS) mains/%.o
+$(MAINS): %: $(OBJS) $(MAINS_DIR)/%.o
 	$(CXX) -o $@ $^ $(LIB)
 
-$(MEDDIR)/%.o: $(SRCDIR)/%.cpp
-	@[ -d $(MEDDIR) ] || mkdir -p $(MEDDIR)
+$(MED_DIR)/%.o: $(SRC_DIR)/%.cpp
+	@[ -d $(MED_DIR) ] || mkdir -p $(MED_DIR)
 	$(CXX) $(FLAGS) -o $@ -c $<
 
-mains/%.o: mains/%.cpp
+$(MAINS_DIR)/%.o: $(MAINS_DIR)/%.cpp
 	$(CXX) $(FLAGS) -o $@ -c $< -Isrc 
 
 clean: 
-	@rm -f $(OBJS) $(DEPS) $(TARGET) $(addsuffix .o, $(addprefix mains/, $(MAINS)))
+	@rm -f $(TARGET) $(OBJS) $(DEPS) $(MAINS_OBJS) $(MAINS_DEPS)
 
--include $(DEPS) $(addsuffix .d, $(addprefix mains/, $(MAINS)))
+-include $(DEPS) $(MAINS_DEPS)

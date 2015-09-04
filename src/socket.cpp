@@ -1,6 +1,6 @@
 #include "socket.hpp"
 #include "helper.hpp"
-#include <cassert>
+#include "error.hpp"
 #include <utility>
 
 void connect(const std::vector<UnitPtr>& prevUnits, const std::vector<UnitPtr>& nextUnits)
@@ -124,8 +124,7 @@ Unit::Unit()
 
 Unit::~Unit()
 {
-    boost::shared_lock<boost::shared_mutex> lock(mtx_);
-    assert(!isAlive_);
+    ZARU_CHECK_IF(isAlive_);
 }
 
 void Unit::connectTo(const UnitPtr& next)
@@ -153,24 +152,30 @@ void Unit::start()
 {
     // guarantee this unit is alive in the following impl function call
     boost::upgrade_lock<boost::shared_mutex> readLock(mtx_);
-    if(!isAlive_){
-        boost::upgrade_to_unique_lock<boost::shared_mutex> writeLock(readLock);
-        isAlive_ = true;
-        socket_->open();
-        startImpl();
+    if(isAlive_){
+        ZARU_CHECK("try to start when alive");
+        return;
     }
+
+    boost::upgrade_to_unique_lock<boost::shared_mutex> writeLock(readLock);
+    isAlive_ = true;
+    socket_->open();
+    startImpl();
 }
 
 void Unit::stop()
 {
     // guarantee this unit is alive in the following impl function call
     boost::upgrade_lock<boost::shared_mutex> readLock(mtx_);
-    if(isAlive_){
-        boost::upgrade_to_unique_lock<boost::shared_mutex> writeLock(readLock);
-        isAlive_ = false;
-        socket_->close();
-        stopImpl();
+    if(!isAlive_){
+        ZARU_CHECK("try to stop when dead");
+        return;
     }
+
+    boost::upgrade_to_unique_lock<boost::shared_mutex> writeLock(readLock);
+    isAlive_ = false;
+    socket_->close();
+    stopImpl();
 }
 
 void Unit::input(const PCMWave& wave)
@@ -198,10 +203,18 @@ void ThreadOutUnit::startImpl()
     hasFinished_ = false;
     proc_ = make_unique<boost::thread>(
         [this](){
-            construct();
-            while(!hasFinished_){
-                PCMWave wave(std::move(update()));
-                if(!hasFinished_)   send(wave);
+            try{
+                construct();
+                while(!hasFinished_){
+                    PCMWave wave(std::move(update()));
+                    if(!hasFinished_)   send(wave);
+                }
+            }
+            catch(std::exception& ex){
+                ZARU_CHECK(ex.what());
+            }
+            catch(...){
+                ZARU_CHECK("fatal error");
             }
             destruct();
         }
@@ -214,29 +227,3 @@ void ThreadOutUnit::stopImpl()
     proc_->join();
 }
 
-///
-
-void WaitThreadOutUnit::startImpl()
-{
-    hasFinished_ = false;
-    proc_ = make_unique<boost::thread>(
-        [this](){
-            construct();
-            auto prevTime = getNowTime();
-            while(!hasFinished_){
-                PCMWave wave(std::move(update()));
-                int interval = 100 - getInterval(prevTime, getNowTime());
-                if(interval >= 10)  sleepms(interval == 100 ? 90 : interval);
-                prevTime = getNowTime();
-                if(!hasFinished_)   send(wave);
-            }
-            destruct();
-        }
-    );
-}
-
-void WaitThreadOutUnit::stopImpl()
-{
-    hasFinished_ = true;
-    proc_->join();
-}

@@ -6,6 +6,9 @@
 #include <portaudio.h>
 #include <string>
 
+std::array<float, PCMWave::BUFFER_SIZE * 2> wave2float(const PCMWave& src);
+PCMWave float2wave(const std::array<float, PCMWave::BUFFER_SIZE>& src);
+
 class PAAudioDevice : public AudioDevice
 {
 private:

@@ -4,12 +4,41 @@
 
 #include "glut.hpp"
 #include "pcmwave.hpp"
-#include "helper.hpp"
 #include "group.hpp"
 #include <boost/thread.hpp>
 #include <atomic>
 #include <memory>
 #include <vector>
+
+struct Rect
+{
+	double left, top, right, bottom;
+
+	Rect(){}
+	Rect(double left_, double top_, double right_, double bottom_)
+		: left(left_), top(top_), right(right_), bottom(bottom_)
+	{}
+};
+
+struct Color
+{
+	int r, g, b;
+
+	Color(){}
+    Color(int r_, int g_, int b_)
+        : r(r_), g(g_), b(b_)
+    {}
+
+    static Color black()   { return Color(  0,   0,   0); }
+    static Color white()   { return Color(255, 255, 255); }
+    static Color red()     { return Color(255,   0,   0); }
+    static Color green()   { return Color(  0, 255,   0); }
+    static Color blue()    { return Color(  0,   0, 255); }
+    static Color yellow()  { return Color(255, 255,   0); }
+    static Color cyan()    { return Color(  0, 255, 255); }
+    static Color magenta() { return Color(255,   0, 255); }
+    static Color gray()    { return Color(128, 128, 128); }
+};
 
 class GlutView;
 

@@ -1,5 +1,5 @@
 #include "group.hpp"
-
+#include "calc.hpp"
 #include "helper.hpp"
 
 void Group::updateWaveLevel(const PCMWave::Sample& sample)

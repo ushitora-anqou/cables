@@ -1,4 +1,7 @@
 #include "glutview.hpp"
+#include "helper.hpp"
+#include "calc.hpp"
+#include "error.hpp"
 #include <boost/lexical_cast.hpp>
 
 GlutViewSystem::GlutViewSystem()
@@ -15,7 +18,7 @@ GlutViewSystem::~GlutViewSystem()
 
 void GlutViewSystem::run()
 {
-    assert(hasFinished_ == true);
+    ZARU_THROW_UNLESS(hasFinished_ == true);
     hasFinished_ = false;
     while(!hasFinished_){
         glutMainLoopEvent();

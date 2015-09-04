@@ -2,6 +2,7 @@
 #include "helper.hpp"
 #include "units.hpp"
 #include "glutview.hpp"
+#include "error.hpp"
 #include "asio_network.hpp"
 #include <boost/algorithm/string.hpp>
 #include <iostream>
@@ -43,7 +44,7 @@ public:
     std::vector<std::string> createOptionalInfo() override
     {
         return std::vector<std::string>({
-            toString(volume_->getRate())
+            toString(volume_->getVolume())
         });
     }
 
@@ -68,31 +69,31 @@ private:
     std::shared_ptr<VolumeFilter> masterVolume_;
 
 protected:
-    void draw()
+    void draw(const std::vector<GroupPtr>& groups) override
     {
         drawString(600, 400,
-            toString(masterVolume_->getRate()), Color::blue());
+            toString(masterVolume_->getVolume()), Color::blue());
     }
 
-    void draw(int index, const GroupPtr& groupInfo)
+    void draw(int index, const GroupPtr& groupInfo) override
     {
         drawLevelMeter(index, groupInfo);
     }
 
-    void keyDown(const std::vector<GroupPtr>& groups, unsigned char key)
+    void keyDown(const std::vector<GroupPtr>& groups, unsigned char key) override
     {
         switch(key)
         {
         case 'i':
-            masterVolume_->addRate(5);
+            masterVolume_->addVolume(5);
             break;
         case 'k':
-            masterVolume_->addRate(-5);
+            masterVolume_->addVolume(-5);
             break;
         }
     }
 
-    void keyDown(int index, const GroupPtr& groupInfo, unsigned char key)
+    void keyDown(int index, const GroupPtr& groupInfo, unsigned char key) override
     {
         auto group = std::dynamic_pointer_cast<MixerSideGroup>(groupInfo);
         switch(key)
@@ -104,10 +105,10 @@ protected:
             group->recv_->setMute(!group->recv_->isMute());
             break;
         case 'o':
-            group->volume_->addRate(5);
+            group->volume_->addVolume(5);
             break;
         case 'l':
-            group->volume_->addRate(-5);
+            group->volume_->addVolume(-5);
             break;
         }
     }
@@ -120,54 +121,65 @@ public:
 
 int main(int argc, char **argv)
 {
-    auto audioSystem = std::make_shared<PAAudioSystem>();
-    auto& viewSystem = GlutViewSystem::getInstance();
-    
-    auto speaker = std::make_shared<SpeakerInUnit>(
-        audioSystem->createOutputStream(
-            audioSystem->getDefaultOutputDevice()));
-    auto masterVolume = std::make_shared<VolumeFilter>();
-    auto view = std::make_shared<MixerView>(masterVolume);
+    try{
+        auto audioSystem = std::make_shared<PAAudioSystem>();
+        auto& viewSystem = GlutViewSystem::getInstance();
+        
+        auto speaker = std::make_shared<SpeakerInUnit>(
+            audioSystem->createOutputStream(
+                audioSystem->getDefaultOutputDevice()));
+        auto masterVolume = std::make_shared<VolumeFilter>();
+        auto view = std::make_shared<MixerView>(masterVolume);
 
-    connect({masterVolume}, {speaker});
-    speaker->start();
-    masterVolume->start();
+        connect({masterVolume}, {speaker});
+        speaker->start();
+        masterVolume->start();
 
-    boost::thread viewThread([&viewSystem]() {
-        viewSystem.run();
-    });
+        boost::thread viewThread([&viewSystem]() {
+            viewSystem.run();
+        });
 
-    std::vector<std::shared_ptr<MixerSideGroup>> groups;
-    std::string input;
-    while(std::getline(std::cin, input)){
-        const static std::unordered_map<std::string, boost::function<void(const std::vector<std::string>&)>> procs = {
-            {"devices", [&audioSystem](const std::vector<std::string>&) {
-                writeDeviceInfo(std::cout, audioSystem->getValidDevices());
-            }},
-            {"start_in",   [&groups, &view, &audioSystem, &masterVolume](const std::vector<std::string>& args) {
-                int index = boost::lexical_cast<int>(args.at(1));
-                auto device = audioSystem->getValidDevices().at(index);
-                groups.push_back(std::make_shared<MixerSideGroup>(
-                    12345 + groups.size(),
-                    masterVolume
-                ));
-                view->addGroup(groups.back());
-                groups.back()->start();
-            }},
-        };
-        std::vector<std::string> args;
-        boost::split(args, input, boost::is_space());
-        if(args.front() == "quit")  break;
-        procs.at(args.front())(args);
+        std::vector<std::shared_ptr<MixerSideGroup>> groups;
+        std::string input;
+        while(std::getline(std::cin, input)){
+            try{
+                const static std::unordered_map<std::string, boost::function<void(const std::vector<std::string>&)>> procs = {
+                    {"devices", [&audioSystem](const std::vector<std::string>&) {
+                        writeDeviceInfo(std::cout, audioSystem->getValidDevices());
+                    }},
+                    {"start_in",   [&groups, &view, &audioSystem, &masterVolume](const std::vector<std::string>& args) {
+                        int index = boost::lexical_cast<int>(args.at(1));
+                        auto device = audioSystem->getValidDevices().at(index);
+                        auto group = std::make_shared<MixerSideGroup>(
+                            12345 + groups.size(),
+                            masterVolume
+                        );
+                        group->start();
+                        view->addGroup(group);
+                        groups.push_back(group);
+                    }},
+                };
+                std::vector<std::string> args;
+                boost::split(args, input, boost::is_space());
+                if(args.front() == "quit")  break;
+                procs.at(args.front())(args);
+            }
+            catch(std::exception& ex){
+                ZARU_CHECK(ex.what());
+            }
+        }
+
+        viewSystem.stop();
+        viewThread.join();
+
+        speaker->stop();
+        masterVolume->stop();
+        for(auto& g : groups)   g->stop();
+
+        std::cout << "SUCCESS" << std::endl;
     }
-
-    viewSystem.stop();
-    viewThread.join();
-
-    speaker->stop();
-    masterVolume->stop();
-    for(auto& g : groups)   g->stop();
-
-    std::cout << "SUCCESSFULLY" << std::endl;
+    catch(std::exception& ex){
+        ZARU_CHECK(ex.what());
+    }
 }
 

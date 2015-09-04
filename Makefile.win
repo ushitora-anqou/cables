@@ -1,8 +1,11 @@
 CXX=g++
-CPPS=glutview.cpp main.cpp units.cpp wavefile.cpp socket.cpp portaudio.cpp asio_network.cpp
-OBJS=$(CPPS:.cpp=.o)
-DEPS=$(CPPS:.cpp=.d)
-#LIB=-lboost_thread -lboost_system -lportaudio -lncurses
+SRC_DIR=src
+MED_DIR=med
+MAINS_DIR=mains
+
+CPPS=$(notdir $(wildcard $(SRC_DIR)/*.cpp))	# ソースの複数階層に対応していない
+OBJS=$(addprefix $(MED_DIR)/, $(CPPS:.cpp=.o))
+DEPS=$(OBJS:.o=.d)
 INCLUDE=\
 	-ID:\Zaru\Dropbox\Softs\MinGW\libraries\ncurses\include\ncursesw -ID:\Zaru\Dropbox\Softs\MinGW\libraries\ncurses\include \
 	-ID:\Zaru\Dropbox\Softs\MinGW\libraries\portaudio\include \
@@ -15,16 +18,23 @@ LIB=\
 	-LD:\Zaru\Dropbox\Softs\MinGW\libraries\boost_1_57_0\lib -lboost_thread-mgw48-mt-1_57 -lboost_system-mgw48-mt-1_57 -lboost_regex-mgw48-mt-1_57 -lboost_serialization-mgw48-mt-1_57 -lwsock32 -lWS2_32 \
 	-LD:\Zaru\Dropbox\Softs\MinGW\libraries\freeglut\lib -lfreeglut -lfreeglut_static -lglu32 -lopengl32
 FLAGS=-g -O0 -std=c++11
+#FLAGS=-O3 -std=c++11
 
-cables: $(OBJS)
-	$(CXX) -o $@ $(OBJS) $(LIB)
+MAINS=mixer mic recorder test
+MAINS_OBJS=$(addsuffix .o, $(addprefix mains/, $(MAINS)))
 
-%.o: %.cpp
-	$(CXX) $(FLAGS) -c -MMD -MP $< $(INCLUDE)
+all: $(MAINS)
+
+$(MAINS): %: $(OBJS) $(MAINS_DIR)/%.o
+	$(CXX) -o $@ $^ $(LIB)
+
+$(MED_DIR)/%.o: $(SRC_DIR)/%.cpp
+	@[ -d $(MED_DIR) ] || mkdir -p $(MED_DIR)
+	$(CXX) $(FLAGS) -o $@ -c $< $(INCLUDE)
+
+$(MAINS_DIR)/%.o: $(MAINS_DIR)/%.cpp
+	$(CXX) $(FLAGS) -o $@ -c $< -Isrc $(INCLUDE)
 
 clean: 
-	@rm -f $(OBJS) $(DEPS)
+	@rm -f $(TARGET) $(OBJS) $(MAINS_OBJS)
 
-all: clean cables
-
-#-include $(DEPS)

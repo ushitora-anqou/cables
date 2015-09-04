@@ -1,67 +1,34 @@
 #include "units.hpp"
 #include "glutview.hpp"
-#include "helper.hpp"
+#include "calc.hpp"
+#include "error.hpp"
 #include <cmath>
 #include <algorithm>
 
-PCMWave PumpOutUnit::update()
+void VolumeFilter::setVolume(int volume)
 {
-    PCMWave tmp;
-    tmp.fill(PCMWave::Sample(0, 0));
-    return tmp;
+    if(volume < 0)  return;
+    volume_ = volume;
 }
 
-SinOutUnit::SinOutUnit(int f)
-    : sinTable_(PCMWave::SAMPLE_RATE / f, 0), p_(0)
+void VolumeFilter::addVolume(int diff)
 {
-    int t = sinTable_.size();
-    for(int i = 0;i < t;i++){
-        sinTable_.at(i) = static_cast<double>(::sin(2 * 3.14159265358979323846264338 * i / t));
-    }
+    setVolume(std::max(0, volume_ + diff));
 }
 
-PCMWave SinOutUnit::update()
+int VolumeFilter::getVolume()
 {
-    auto& tbl = sinTable_;
-    PCMWave ret;
-    for(auto& s : ret){
-        s.left = tbl.at(p_);
-        s.right = tbl.at(p_);
-        p_ = (p_ + 1) % tbl.size();
-    }
-
-    return std::move(ret);
-}
-
-///
-
-void VolumeFilter::setRate(int rate)
-{
-    assert(rate >= 0);
-    boost::mutex::scoped_lock lock(mtx_);
-    rate_ = rate;
-}
-
-void VolumeFilter::addRate(int interval)
-{
-    boost::mutex::scoped_lock lock(mtx_);
-    rate_ += interval;
-    rate_ = std::max(rate_, 0);
-}
-
-int VolumeFilter::getRate()
-{
-    boost::mutex::scoped_lock lock(mtx_);
-    return rate_;
+    return volume_;
 }
 
 void VolumeFilter::inputImpl(const PCMWave& wave)
 {
+    int vol = volume_;
     PCMWave ret;
     std::transform(
         wave.begin(), wave.end(),
         ret.begin(),
-        [this](const PCMWave::Sample& s) { return s * divd(rate_, 100); }
+        [vol](const PCMWave::Sample& s) { return s * divd(vol, 100); }
     );
     send(ret);
 }
@@ -77,9 +44,17 @@ void MicOutUnit::construct()
     stream_->start();
 }
 
-void MicOutUnit::destruct()
+void MicOutUnit::destruct() noexcept
 {
-    stream_->stop();
+    try{
+        stream_->stop();
+    }
+    catch(std::exception& ex){
+        ZARU_CHECK(ex.what());
+    }
+    catch(...){
+        ZARU_CHECK("fatal error");
+    }
 }
 
 PCMWave MicOutUnit::update()

@@ -3,8 +3,9 @@
 #include "units.hpp"
 #include "glutview.hpp"
 #include <boost/algorithm/string.hpp>
+#include <boost/lexical_cast.hpp>
+#include <boost/regex.hpp>
 #include <iostream>
-
 
 class RecorderGroup : public Group
 {
@@ -61,12 +62,12 @@ public:
 class RecorderView : public GlutView
 {
 protected:
-    void draw(int index, const GroupPtr& groupInfo)
+    void draw(int index, const GroupPtr& groupInfo) override
     {
         drawLevelMeter(index, groupInfo);
     }
 
-    void keyDown(int index, const GroupPtr& groupInfo, unsigned char key)
+    void keyDown(int index, const GroupPtr& groupInfo, unsigned char key) override
     {
         auto group = std::dynamic_pointer_cast<RecorderGroup>(groupInfo);
         switch(key)

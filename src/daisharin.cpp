@@ -1,4 +1,5 @@
 #include "daisharin.hpp"
+#include "calc.hpp"
 #include "helper.hpp"
 #include <ctime>
 
@@ -46,9 +47,7 @@ double Daisharin::calcFeedback(int offset)
     feedPhase_ ^= 1;
     return (feedPhase_ ? -1 : 1) *
         std::pow(
-            0.001,
-            offset / static_cast<double>(PCMWave::SAMPLE_RATE)
-                / (reverbTime_ * 0.001))
+            0.001, divd(offset, PCMWave::SAMPLE_RATE) / (reverbTime_ * 0.001))
         / std::sqrt(delayPoints_.size());
 }
 

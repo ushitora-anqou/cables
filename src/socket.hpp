@@ -109,26 +109,7 @@ public:
     void stopImpl();
     virtual void construct(){}
     virtual PCMWave update() = 0;
-    virtual void destruct(){}
-};
-
-class WaitThreadOutUnit : public Unit
-{
-private:
-    std::unique_ptr<boost::thread> proc_;
-    bool hasFinished_;
-
-public:
-    WaitThreadOutUnit()
-        : hasFinished_(false)
-    {}
-    virtual ~WaitThreadOutUnit(){}
-
-    void startImpl();
-    void stopImpl();
-    virtual void construct(){}
-    virtual PCMWave update() = 0;
-    virtual void destruct(){}
+    virtual void destruct() noexcept {}
 };
 
 #endif

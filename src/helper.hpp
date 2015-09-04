@@ -2,24 +2,10 @@
 #ifndef ___HELPER_HPP___
 #define ___HELPER_HPP___
 
-#include <boost/regex.hpp>
-#include <boost/preprocessor.hpp>
-#include <boost/thread.hpp>
-#include <boost/lexical_cast.hpp>
 #include "audio.hpp"
-#include <cmath>
-#include <cassert>
-#include <chrono>
-#include <limits>
 #include <memory>
+#include <sstream>
 #include <vector>
-
-#define ZARU_ASSERT(res) \
-    assert((res));
-
-#define TYPE_SIZE_ASSERT(type, size) \
-    static_assert(sizeof((type)) == size, \
-        "The size of \"" BOOST_PP_STRINGIZE((type)) "\" isn't " BOOST_PP_STRINGIZE((size)) " byte(s).");
 
 #define SCOPED_LOCK(mtx) \
     boost::mutex::scoped_lock lock((mtx));
@@ -46,97 +32,11 @@ void indexedForeach(const std::vector<T>& container, Func func)
     }
 }
 
-inline double calcDB(double src)
+inline std::string toString(int src)
 {
-    return 20 * std::log10(std::abs(src));
-}
-
-inline double divd(int n0, int n1)
-{
-    return static_cast<double>(n0) / n1;
-}
-
-inline std::array<float, PCMWave::BUFFER_SIZE * 2> wave2float(const PCMWave& wave)
-{
-    std::array<float, PCMWave::BUFFER_SIZE * 2> ret;
-    auto it = ret.begin();
-    for(auto& s : wave){
-        *(it++) = s.left;
-        *(it++) = s.right;
-    }
-    return std::move(ret);
-}
-
-inline void sleepms(int delay)
-{
-    if(delay <= 0)  return;
-    boost::this_thread::sleep(boost::posix_time::milliseconds(delay));
-}
-
-inline std::chrono::system_clock::time_point getNowTime()
-{
-    return std::chrono::system_clock::now();
-}
-
-inline int getInterval(const std::chrono::system_clock::time_point& beg, const std::chrono::system_clock::time_point& fin)
-{
-    return std::chrono::duration_cast<std::chrono::milliseconds>(fin - beg).count();
-}
-
-inline std::string replaceSpaces(const std::string& dlm, const std::string& src)
-{
-    return boost::regex_replace(src, boost::regex("\\s+"), dlm, boost::format_all);
-}
-
-template<class T>
-inline std::string toString(const T& src)
-{
-    return boost::lexical_cast<std::string>(src);
-}
-
-struct Rect
-{
-	double left, top, right, bottom;
-
-	Rect(){}
-	Rect(double left_, double top_, double right_, double bottom_)
-		: left(left_), top(top_), right(right_), bottom(bottom_)
-	{}
-};
-
-struct Color
-{
-	int r, g, b;
-
-	Color(){}
-    Color(int r_, int g_, int b_)
-        : r(r_), g(g_), b(b_)
-    {}
-
-    static Color black()   { return Color(  0,   0,   0); }
-    static Color white()   { return Color(255, 255, 255); }
-    static Color red()     { return Color(255,   0,   0); }
-    static Color green()   { return Color(  0, 255,   0); }
-    static Color blue()    { return Color(  0,   0, 255); }
-    static Color yellow()  { return Color(255, 255,   0); }
-    static Color cyan()    { return Color(  0, 255, 255); }
-    static Color magenta() { return Color(255,   0, 255); }
-    static Color gray()    { return Color(128, 128, 128); }
-};
-
-constexpr double infinity() noexcept
-{
-    return std::numeric_limits<double>::infinity();
-}
-
-constexpr double minfinity() noexcept
-{
-    return -std::numeric_limits<double>::infinity();
-}
-
-constexpr double pi() noexcept
-{
-    return 3.14159265358979323846264338;
+    std::stringstream ss;
+    ss << src;
+    return ss.str();
 }
 
 inline void writeDeviceInfo(std::ostream& os, const std::vector<AudioDevicePtr>& devices)
