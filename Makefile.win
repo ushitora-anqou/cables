@@ -7,16 +7,14 @@ CPPS=$(notdir $(wildcard $(SRC_DIR)/*.cpp))	# ソースの複数階層に対応�
 OBJS=$(addprefix $(MED_DIR)/, $(CPPS:.cpp=.o))
 DEPS=$(OBJS:.o=.d)
 INCLUDE=\
-	-ID:\Zaru\Dropbox\Softs\MinGW\libraries\ncurses\include\ncursesw -ID:\Zaru\Dropbox\Softs\MinGW\libraries\ncurses\include \
-	-ID:\Zaru\Dropbox\Softs\MinGW\libraries\portaudio\include \
-	-ID:\Zaru\Dropbox\Softs\MinGW\libraries\boost_1_57_0\include -D_WIN32_WINNT=0x0501 -DWINVER=0x0501 \
-	-ID:\Zaru\Dropbox\Softs\MinGW\libraries\freeglut\include
+	-I../../libraries\portaudio\include \
+	-I../../libraries\boost_1_57_0\include -D_WIN32_WINNT=0x0501 -DWINVER=0x0501 \
+	-I../../libraries\freeglut\include
 LIB=\
 	-static-libgcc -static-libstdc++ \
-	-LD:\Zaru\Dropbox\Softs\MinGW\libraries\ncurses\lib -lncursesw \
-	-LD:\Zaru\Dropbox\Softs\MinGW\libraries\portaudio\lib -lportaudio -lportaudiocpp \
-	-LD:\Zaru\Dropbox\Softs\MinGW\libraries\boost_1_57_0\lib -lboost_thread-mgw48-mt-1_57 -lboost_system-mgw48-mt-1_57 -lboost_regex-mgw48-mt-1_57 -lboost_serialization-mgw48-mt-1_57 -lwsock32 -lWS2_32 \
-	-LD:\Zaru\Dropbox\Softs\MinGW\libraries\freeglut\lib -lfreeglut -lfreeglut_static -lglu32 -lopengl32
+	-L../../libraries\portaudio\lib -lportaudio -lportaudiocpp \
+	-L../../libraries\boost_1_57_0\lib -lboost_thread-mgw48-mt-1_57 -lboost_system-mgw48-mt-1_57 -lboost_regex-mgw48-mt-1_57 -lboost_serialization-mgw48-mt-1_57 -lwsock32 -lWS2_32 \
+	-L../../libraries\freeglut\lib -lfreeglut -lfreeglut_static -lglu32 -lopengl32
 FLAGS=-g -O0 -std=c++11
 #FLAGS=-O3 -std=c++11
 
