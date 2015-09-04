@@ -135,42 +135,40 @@ int main(int argc, char **argv)
         speaker->start();
         masterVolume->start();
 
-        boost::thread viewThread([&viewSystem]() {
-            viewSystem.run();
-        });
-
         std::vector<std::shared_ptr<MixerSideGroup>> groups;
-        std::string input;
-        while(std::getline(std::cin, input)){
-            try{
-                const static std::unordered_map<std::string, boost::function<void(const std::vector<std::string>&)>> procs = {
-                    {"devices", [&audioSystem](const std::vector<std::string>&) {
-                        writeDeviceInfo(std::cout, audioSystem->getValidDevices());
-                    }},
-                    {"start_in",   [&groups, &view, &audioSystem, &masterVolume](const std::vector<std::string>& args) {
-                        int index = boost::lexical_cast<int>(args.at(1));
-                        auto device = audioSystem->getValidDevices().at(index);
-                        auto group = std::make_shared<MixerSideGroup>(
-                            12345 + groups.size(),
-                            masterVolume
-                        );
-                        group->start();
-                        view->addGroup(group);
-                        groups.push_back(group);
-                    }},
-                };
-                std::vector<std::string> args;
-                boost::split(args, input, boost::is_space());
-                if(args.front() == "quit")  break;
-                procs.at(args.front())(args);
+        boost::thread inputThread([&viewSystem, &audioSystem, &view, &masterVolume, &groups]() {
+            std::string input;
+            while(std::getline(std::cin, input)){
+                try{
+                    const static std::unordered_map<std::string, boost::function<void(const std::vector<std::string>&)>> procs = {
+                        {"devices", [&audioSystem](const std::vector<std::string>&) {
+                            writeDeviceInfo(std::cout, audioSystem->getValidDevices());
+                        }},
+                        {"start_in",   [&groups, &view, &audioSystem, &masterVolume](const std::vector<std::string>& args) {
+                            int index = boost::lexical_cast<int>(args.at(1));
+                            auto device = audioSystem->getValidDevices().at(index);
+                            auto group = std::make_shared<MixerSideGroup>(
+                                12345 + groups.size(),
+                                masterVolume
+                            );
+                            group->start();
+                            view->addGroup(group);
+                            groups.push_back(group);
+                        }},
+                    };
+                    std::vector<std::string> args;
+                    boost::split(args, input, boost::is_space());
+                    if(args.front() == "quit")  break;
+                    procs.at(args.front())(args);
+                }
+                catch(std::exception& ex){
+                    ZARU_CHECK(ex.what());
+                }
             }
-            catch(std::exception& ex){
-                ZARU_CHECK(ex.what());
-            }
-        }
 
-        viewSystem.stop();
-        viewThread.join();
+            viewSystem.stop();
+        });
+        viewSystem.run();
 
         speaker->stop();
         masterVolume->stop();
