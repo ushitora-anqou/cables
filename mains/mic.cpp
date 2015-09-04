@@ -245,17 +245,19 @@ int main(int argc, char **argv)
         });
 
         std::vector<std::shared_ptr<MicSideGroup>> groups;
-        std::string input;
+        std::string input, ip = "127.0.0.1";
         while(std::getline(std::cin, input)){
             try{
                 const static std::unordered_map<std::string, boost::function<void(const std::vector<std::string>&)>> procs = {
                     {"devices", [&audioSystem](const std::vector<std::string>&) {
                         writeDeviceInfo(std::cout, audioSystem->getValidDevices());
                     }},
-                    {"start_in",   [&groups, &view, &audioSystem](const std::vector<std::string>& args) {
+                    {"ip", [&ip](const std::vector<std::string>& args) {
+                        ip = args.at(1);
+                    }},
+                    {"start_in",   [&groups, &view, &audioSystem, &ip](const std::vector<std::string>& args) {
                         int index = boost::lexical_cast<int>(args.at(1));
-                        const std::string ip = args.at(2);
-                        unsigned short port = boost::lexical_cast<unsigned short>(args.at(3));
+                        unsigned short port = boost::lexical_cast<unsigned short>(args.at(2));
                         auto device = audioSystem->getValidDevices().at(index);
                         auto group = std::make_shared<MicSideGroup>(
                             device->name(),

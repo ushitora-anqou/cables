@@ -125,11 +125,15 @@ int main(int argc, char **argv)
         auto audioSystem = std::make_shared<PAAudioSystem>();
         auto& viewSystem = GlutViewSystem::getInstance();
         
-        auto speaker = std::make_shared<SpeakerInUnit>(
-            audioSystem->createOutputStream(
-                audioSystem->getDefaultOutputDevice()));
         auto masterVolume = std::make_shared<VolumeFilter>();
         auto view = std::make_shared<MixerView>(masterVolume);
+
+        auto devices = audioSystem->getValidDevices();
+        writeDeviceInfo(std::cout, devices);
+        std::cout << "Output: " << std::flush;
+        int index;  std::cin >> index;
+        auto speaker = std::make_shared<SpeakerInUnit>(
+            audioSystem->createOutputStream(devices.at(index)));
 
         connect({masterVolume}, {speaker});
         speaker->start();
@@ -141,13 +145,8 @@ int main(int argc, char **argv)
             while(std::getline(std::cin, input)){
                 try{
                     const static std::unordered_map<std::string, boost::function<void(const std::vector<std::string>&)>> procs = {
-                        {"devices", [&audioSystem](const std::vector<std::string>&) {
-                            writeDeviceInfo(std::cout, audioSystem->getValidDevices());
-                        }},
-                        {"start_in",   [&groups, &view, &audioSystem, &masterVolume](const std::vector<std::string>& args) {
-                            int index = boost::lexical_cast<int>(args.at(1));
-                            unsigned short port = boost::lexical_cast<unsigned short>(args.at(2));
-                            auto device = audioSystem->getValidDevices().at(index);
+                        {"start_in",   [&groups, &view, &masterVolume](const std::vector<std::string>& args) {
+                            unsigned short port = boost::lexical_cast<unsigned short>(args.at(1));
                             auto group = std::make_shared<MixerSideGroup>(
                                 port,
                                 masterVolume
