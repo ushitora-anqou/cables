@@ -56,7 +56,8 @@ void PAAudioStream::stop()
 PCMWave PAAudioStream::read()
 {
     std::array<float, PCMWave::BUFFER_SIZE> buffer;
-    ZARU_THROW_UNLESS(Pa_ReadStream(stream_, buffer.data(), PCMWave::BUFFER_SIZE) == paNoError);
+    auto res = Pa_ReadStream(stream_, buffer.data(), PCMWave::BUFFER_SIZE);
+    ZARU_THROW_UNLESS(res == paNoError || res == paInputOverflowed);
     PCMWave ret;
     return std::move(float2wave(buffer));
 }
@@ -106,7 +107,7 @@ std::unique_ptr<AudioStream> PAAudioSystem::createInputStream(const AudioDeviceP
     inputParam.device = dev->getIndex();
     inputParam.channelCount = 1;
     inputParam.sampleFormat = paFloat32;
-    inputParam.suggestedLatency = dev->getInfo().defaultLowInputLatency;
+    inputParam.suggestedLatency = dev->getInfo().defaultHighInputLatency;
     inputParam.hostApiSpecificStreamInfo = NULL;
 
     PaStream *stream = NULL;
@@ -115,7 +116,7 @@ std::unique_ptr<AudioStream> PAAudioSystem::createInputStream(const AudioDeviceP
         &inputParam,
         NULL,
         PCMWave::SAMPLE_RATE,
-        PCMWave::BUFFER_SIZE,
+        PCMWave::BUFFER_SIZE * 2,
         paClipOff,
         NULL,
         NULL
