@@ -147,6 +147,11 @@ void GlutView::drawLevelMeter(int i, const GroupPtr& groupInfo)
         groupInfo->createName(), Color::black());
 }
 
+int GlutView::calcIndexFromXY(int x, int y)
+{
+    return y / UNIT_HEIGHT;
+}
+
 void GlutView::displayFunc()
 {
 	drawScoped([this]() {
@@ -203,6 +208,23 @@ void GlutView::keyboardUpFunc(unsigned char key, int x, int y)
     }
 
 
+}
+
+void GlutView::mouseFunc(int button, int state, int x, int y)
+{
+    SCOPED_LOCK(mtx_);
+
+    switch(button)
+    {
+    case GLUT_LEFT_BUTTON:
+        if(state == GLUT_UP)    clickLeftUp(groupInfoList_, x, y);
+        if(state == GLUT_DOWN)  clickLeftDown(groupInfoList_, x, y);    break;
+    case GLUT_RIGHT_BUTTON:
+        if(state == GLUT_UP)    clickRightUp(groupInfoList_, x, y);
+        if(state == GLUT_DOWN)  clickRightDown(groupInfoList_, x, y);   break;
+    case 3: wheelUp(groupInfoList_, x, y);      break;
+    case 4: wheelDown(groupInfoList_, x, y);    break;
+    }
 }
 
 void GlutView::timerFunc(int idx)

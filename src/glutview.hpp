@@ -84,9 +84,9 @@ class GlutView : public glut::Window
 private:
     const int
         LEVEL_METER_DB_MIN = -60,
-        PIXEL_PER_DB = 8,
+        PIXEL_PER_DB = 4,
 
-        UNIT_HEIGHT = 50,
+        UNIT_HEIGHT = 120,
 
         SELECTED_MARK_POS_X = 0,
         SELECTED_MARK_WIDTH = 50,
@@ -108,6 +108,7 @@ protected:
 	void reshapeFunc(int w, int h) override;
 	void keyboardFunc(unsigned char key, int x, int y) override;
 	void keyboardUpFunc(unsigned char key, int x, int y) override;
+    void mouseFunc(int button, int state, int x, int y) override;
 	void timerFunc(int idx) override;
 	void closeFunc() override;
 
@@ -131,6 +132,7 @@ protected:
     void drawSelectedUnitMark(int index);
     void drawUnitString(int index, int x, const std::string& msg, const Color& color);
     void drawLevelMeter(int i, const GroupPtr& groupInfo);
+    int calcIndexFromXY(int x, int y);
 
 protected:
     virtual void draw(const std::vector<GroupPtr>& groups){}
@@ -140,6 +142,13 @@ protected:
     virtual void keyDown(int index, const GroupPtr& groupInfo, unsigned char key){}
     virtual void keyUp(const std::vector<GroupPtr>& groups, unsigned char key){}
     virtual void keyUp(int index, const GroupPtr& groupInfo, unsigned char key){}
+
+    virtual void clickLeftDown(const std::vector<GroupPtr>& groups, int x, int y){}
+    virtual void clickLeftUp(const std::vector<GroupPtr>& groups, int x, int y){}
+    virtual void clickRightDown(const std::vector<GroupPtr>& groups, int x, int y){}
+    virtual void clickRightUp(const std::vector<GroupPtr>& groups, int x, int y){}
+    virtual void wheelUp(const std::vector<GroupPtr>& groups, int x, int y){}
+    virtual void wheelDown(const std::vector<GroupPtr>& groups, int x, int y){}
 
 public:
     GlutView(const std::string& title);

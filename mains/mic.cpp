@@ -227,6 +227,15 @@ protected:
         }
     }
 
+    void clickLeftDown(const std::vector<GroupPtr>& groups, int x, int y)
+    {
+        int index = calcIndexFromXY(x, y);
+        if(index >= groups.size())  return;
+        auto g = std::dynamic_pointer_cast<MicSideGroup>(groups.at(index));
+        g->mic_->setMute(g->mic_->isMute() ? false : true);
+        g->sin_->setMute(true);
+    }
+
 public:
     MicView()
         : GlutView("mic")
