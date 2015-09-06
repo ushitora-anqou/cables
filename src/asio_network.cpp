@@ -86,7 +86,7 @@ void AsioNetworkRecvOutUnit::startImpl()
 void AsioNetworkRecvOutUnit::stopImpl()
 {
     postProc([this]() {
-        acceptor_->close();
+        acceptor_->cancel();
         conn_.reset();
         hasConnected_ = false;
         setSocketStatus(false);

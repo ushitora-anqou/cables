@@ -98,19 +98,35 @@ protected:
         auto& group = groupInfo;
         switch(key)
         {
-        case 's':
-            // intend to xor mute flag
-            // but, not accurate in multi-thrading envirnments
-            // but, this way is VERY VERY EASY!!
-            group->recv_->setMute(!group->recv_->isMute());
-            break;
-        case 'o':
-            group->volume_->addVolume(5);
-            break;
-        case 'l':
-            group->volume_->addVolume(-5);
+        case 'f':
+            group->recv_->stop();
+            group->recv_->start();
             break;
         }
+    }
+
+    void clickLeftDown(const std::vector<std::shared_ptr<MixerSideGroup>>& groups, int x, int y)
+    {
+        int index = calcIndexFromXY(x, y);
+        if(index >= groups.size())  return;
+        auto g = groups.at(index);
+        g->recv_->setMute(!g->recv_->isMute());
+    }
+
+    void wheelUp(const std::vector<std::shared_ptr<MixerSideGroup>>& groups, int x, int y)
+    {
+        int index = calcIndexFromXY(x, y);
+        if(index >= groups.size())  return;
+        auto g = groups.at(index);
+        g->volume_->addVolume(5);
+    }
+
+    void wheelDown(const std::vector<std::shared_ptr<MixerSideGroup>>& groups, int x, int y)
+    {
+        int index = calcIndexFromXY(x, y);
+        if(index >= groups.size())  return;
+        auto g = groups.at(index);
+        g->volume_->addVolume(-5);
     }
 
 public:
@@ -125,15 +141,15 @@ int main(int argc, char **argv)
         auto audioSystem = std::make_shared<PAAudioSystem>();
         auto& viewSystem = GlutViewSystem::getInstance();
         
-        auto masterVolume = std::make_shared<VolumeFilter>();
-        auto view = std::make_shared<MixerView>(masterVolume);
-
         auto devices = audioSystem->getValidDevices();
         writeDeviceInfo(std::cout, devices);
         std::cout << "Output: " << std::flush;
         int index;  std::cin >> index;
         auto speaker = std::make_shared<SpeakerInUnit>(
             audioSystem->createOutputStream(devices.at(index)));
+
+        auto masterVolume = std::make_shared<VolumeFilter>();
+        auto view = std::make_shared<MixerView>(masterVolume);
 
         connect({masterVolume}, {speaker});
         speaker->start();
@@ -145,7 +161,7 @@ int main(int argc, char **argv)
             while(std::getline(std::cin, input)){
                 try{
                     const static std::unordered_map<std::string, boost::function<void(const std::vector<std::string>&)>> procs = {
-                        {"start_in",   [&groups, &view, &masterVolume](const std::vector<std::string>& args) {
+                        {"bg",   [&groups, &view, &masterVolume](const std::vector<std::string>& args) {
                             unsigned short port = boost::lexical_cast<unsigned short>(args.at(1));
                             auto group = std::make_shared<MixerSideGroup>(
                                 port,

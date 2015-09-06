@@ -181,17 +181,6 @@ protected:
         auto& group = groupInfo;
         switch(key)
         {
-        case 's':
-            // This doesn't guarantee the change of the flag of mute in multi-threading environments.
-            group->mic_->setMute(group->mic_->isMute() ? false : true);
-            group->sin_->setMute(true);
-            break;
-        case 'o':
-            group->micVolume_->addVolume(5);
-            break;
-        case 'l':
-            group->micVolume_->addVolume(-5);
-            break;
         case 'i':
             group->sinVolume_->addVolume(5);
             break;
@@ -232,6 +221,22 @@ protected:
         g->sin_->setMute(true);
     }
 
+    void wheelUp(const std::vector<std::shared_ptr<MicSideGroup>>& groups, int x, int y)
+    {
+        int index = calcIndexFromXY(x, y);
+        if(index >= groups.size())  return;
+        auto g = groups.at(index);
+        g->micVolume_->addVolume(5);
+    }
+
+    void wheelDown(const std::vector<std::shared_ptr<MicSideGroup>>& groups, int x, int y)
+    {
+        int index = calcIndexFromXY(x, y);
+        if(index >= groups.size())  return;
+        auto g = groups.at(index);
+        g->micVolume_->addVolume(-5);
+    }
+
 public:
     MicView()
         : GlutView("mic")
@@ -254,13 +259,13 @@ int main(int argc, char **argv)
         while(std::getline(std::cin, input)){
             try{
                 const static std::unordered_map<std::string, boost::function<void(const std::vector<std::string>&)>> procs = {
-                    {"devices", [&audioSystem](const std::vector<std::string>&) {
+                    {"dev", [&audioSystem](const std::vector<std::string>&) {
                         writeDeviceInfo(std::cout, audioSystem->getValidDevices());
                     }},
                     {"ip", [&ip](const std::vector<std::string>& args) {
                         ip = args.at(1);
                     }},
-                    {"start_in",   [&groups, &view, &audioSystem, &ip](const std::vector<std::string>& args) {
+                    {"bg",   [&groups, &view, &audioSystem, &ip](const std::vector<std::string>& args) {
                         int index = boost::lexical_cast<int>(args.at(1));
                         unsigned short port = boost::lexical_cast<unsigned short>(args.at(2));
                         auto device = audioSystem->getValidDevices().at(index);
