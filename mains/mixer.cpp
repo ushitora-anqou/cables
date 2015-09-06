@@ -9,7 +9,7 @@
 
 class MixerView;
 
-class MixerSideGroup : public Group
+class MixerSideGroup : public GroupBase
 {
     friend class MixerView;
 private:
@@ -63,24 +63,24 @@ public:
     }
 };
 
-class MixerView : public GlutView
+class MixerView : public GlutView<MixerSideGroup>
 {
 private:
     std::shared_ptr<VolumeFilter> masterVolume_;
 
 protected:
-    void draw(const std::vector<GroupPtr>& groups) override
+    void draw(const std::vector<std::shared_ptr<MixerSideGroup>>& groups) override
     {
         drawString(600, 400,
             toString(masterVolume_->getVolume()), Color::blue());
     }
 
-    void draw(int index, const GroupPtr& groupInfo) override
+    void draw(int index, const std::shared_ptr<MixerSideGroup>& groupInfo) override
     {
         drawLevelMeter(index, groupInfo);
     }
 
-    void keyDown(const std::vector<GroupPtr>& groups, unsigned char key) override
+    void keyDown(const std::vector<std::shared_ptr<MixerSideGroup>>& groups, unsigned char key) override
     {
         switch(key)
         {
@@ -93,9 +93,9 @@ protected:
         }
     }
 
-    void keyDown(int index, const GroupPtr& groupInfo, unsigned char key) override
+    void keyDown(int index, const std::shared_ptr<MixerSideGroup>& groupInfo, unsigned char key) override
     {
-        auto group = std::dynamic_pointer_cast<MixerSideGroup>(groupInfo);
+        auto& group = groupInfo;
         switch(key)
         {
         case 's':

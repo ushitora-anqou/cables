@@ -8,15 +8,15 @@
 #include <string>
 #include <vector>
 
-class Group
+class GroupBase
 {
 private:
     boost::mutex mtx_;
     std::pair<double, double> waveLevel_;
 
 public:
-    Group(){}
-    virtual ~Group(){}
+    GroupBase(){}
+    virtual ~GroupBase(){}
 
     void updateWaveLevel(const PCMWave::Sample& sample);
     std::pair<double, double> getWaveLevel();
@@ -28,6 +28,5 @@ public:
     virtual void start(){}
     virtual void stop(){}
 };
-using GroupPtr = std::shared_ptr<Group>;
 
 #endif

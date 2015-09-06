@@ -90,10 +90,10 @@ public:
 class PrintInUnit : public Unit
 {
 private:
-    Group& groupInfo_;
+    GroupBase& groupInfo_;
 
 public:
-	PrintInUnit(Group& groupInfo);
+	PrintInUnit(GroupBase& groupInfo);
 
 	void inputImpl(const PCMWave& wave);
 };

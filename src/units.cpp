@@ -64,7 +64,7 @@ PCMWave MicOutUnit::update()
 
 ///
 
-PrintInUnit::PrintInUnit(Group& groupInfo)
+PrintInUnit::PrintInUnit(GroupBase& groupInfo)
     : groupInfo_(groupInfo)
 {}
 

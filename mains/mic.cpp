@@ -57,7 +57,7 @@ public:
 
 class MicView;
 
-class MicSideGroup : public Group
+class MicSideGroup : public GroupBase
 {
     friend class MicView;
 private:
@@ -149,38 +149,36 @@ public:
     }
 };
 
-class MicView : public GlutView
+class MicView : public GlutView<MicSideGroup>
 {
 protected:
-    void draw(int index, const GroupPtr& groupInfo) override
+    void draw(int index, const std::shared_ptr<MicSideGroup>& groupInfo) override
     {
         drawLevelMeter(index, groupInfo);
     }
 
-    void keyDown(const std::vector<GroupPtr>& groups, unsigned char key) override
+    void keyDown(const std::vector<std::shared_ptr<MicSideGroup>>& groups, unsigned char key) override
     {
         switch(key)
         {
         case 'p':   // trigger-begin
             for(auto& g : groups){
-                auto gd = std::dynamic_pointer_cast<MicSideGroup>(g);
-                gd->mic_->setMute(true);
-                gd->sin_->setMute(false);
+                g->mic_->setMute(true);
+                g->sin_->setMute(false);
             }
             break;
         case 'e':   // trigger-begin
             for(auto& g : groups){
-                auto gd = std::dynamic_pointer_cast<MicSideGroup>(g);
-                gd->through_->setMute(true);
-                gd->reverb_->setMute(false);
+                g->through_->setMute(true);
+                g->reverb_->setMute(false);
             }
             break;
         }
     }
 
-    void keyDown(int index, const GroupPtr& groupInfo, unsigned char key) override
+    void keyDown(int index, const std::shared_ptr<MicSideGroup>& groupInfo, unsigned char key) override
     {
-        auto group = std::dynamic_pointer_cast<MicSideGroup>(groupInfo);
+        auto& group = groupInfo;
         switch(key)
         {
         case 's':
@@ -207,31 +205,29 @@ protected:
         }
     }
 
-    void keyUp(const std::vector<GroupPtr>& groups, unsigned char key) override
+    void keyUp(const std::vector<std::shared_ptr<MicSideGroup>>& groups, unsigned char key) override
     {
         switch(key)
         {
         case 'p':   // trigger-end
             for(auto& g : groups){
-                auto gd = std::dynamic_pointer_cast<MicSideGroup>(g);
-                gd->sin_->setMute(true);
-                gd->mic_->setMute(false);
+                g->sin_->setMute(true);
+                g->mic_->setMute(false);
             }
             break;
         case 'e':   // trigger-end
             for(auto& g : groups){
-                auto gd = std::dynamic_pointer_cast<MicSideGroup>(g);
-                gd->reverb_->setMute(true);
-                gd->through_->setMute(false);
+                g->reverb_->setMute(true);
+                g->through_->setMute(false);
             }
         }
     }
 
-    void clickLeftDown(const std::vector<GroupPtr>& groups, int x, int y)
+    void clickLeftDown(const std::vector<std::shared_ptr<MicSideGroup>>& groups, int x, int y)
     {
         int index = calcIndexFromXY(x, y);
         if(index >= groups.size())  return;
-        auto g = std::dynamic_pointer_cast<MicSideGroup>(groups.at(index));
+        auto g = groups.at(index);
         g->mic_->setMute(g->mic_->isMute() ? false : true);
         g->sin_->setMute(true);
     }

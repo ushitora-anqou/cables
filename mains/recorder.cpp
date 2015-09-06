@@ -7,7 +7,7 @@
 #include <boost/regex.hpp>
 #include <iostream>
 
-class RecorderGroup : public Group
+class RecorderGroup : public GroupBase
 {
     friend class RecorderView;
 private:
@@ -59,22 +59,21 @@ public:
     }
 };
 
-class RecorderView : public GlutView
+class RecorderView : public GlutView<RecorderGroup>
 {
 protected:
-    void draw(int index, const GroupPtr& groupInfo) override
+    void draw(int index, const std::shared_ptr<RecorderGroup>& groupInfo) override
     {
         drawLevelMeter(index, groupInfo);
     }
 
-    void keyDown(int index, const GroupPtr& groupInfo, unsigned char key) override
+    void keyDown(int index, const std::shared_ptr<RecorderGroup>& groupInfo, unsigned char key) override
     {
-        auto group = std::dynamic_pointer_cast<RecorderGroup>(groupInfo);
         switch(key)
         {
         case 's':
             // doesn't guarantee
-            group->mic_->setMute(group->mic_->isMute() ? false : true);
+            groupInfo->mic_->setMute(groupInfo->mic_->isMute() ? false : true);
             break;
         }
     }
