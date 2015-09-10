@@ -73,7 +73,7 @@ class GlutView : public glut::Window
 private:
     const int
         LEVEL_METER_DB_MIN = -60,
-        PIXEL_PER_DB = 4,
+        PIXEL_PER_DB = 6,
 
         UNIT_HEIGHT = 120,
 

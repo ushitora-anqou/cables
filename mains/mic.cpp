@@ -101,8 +101,8 @@ public:
         print_ = std::make_shared<PrintInUnit>(*this);
         send_ = std::make_shared<AsioNetworkSendInUnit>(port, ipAddr);
 
-        connect({mic_}, {micNoiseGate_, sin_});
-        connect({micNoiseGate_}, {micVolume_});
+        connect({mic_}, {micVolume_, sin_});
+        //connect({micNoiseGate_}, {micVolume_});
         connect({micVolume_}, {through_, reverb_});
         connect({sin_}, {sinVolume_});
         connect({sinVolume_}, {through_, reverb_});
@@ -131,6 +131,7 @@ public:
     {
         mic_->start();
         micVolume_->start();
+        micNoiseGate_->start();
         sin_->start();
         sinVolume_->start();
         through_->start();
@@ -143,6 +144,7 @@ public:
     {
         mic_->stop();
         micVolume_->stop();
+        micNoiseGate_->stop();
         sin_->stop();
         sinVolume_->stop();
         through_->stop();
@@ -259,6 +261,7 @@ int main(int argc, char **argv)
 
         std::vector<std::shared_ptr<MicSideGroup>> groups;
         std::string input, ip = "127.0.0.1";
+        int prevPort = 10000;
         while(std::getline(std::cin, input)){
             try{
                 const static std::unordered_map<std::string, boost::function<void(const std::vector<std::string>&)>> procs = {
@@ -268,12 +271,12 @@ int main(int argc, char **argv)
                     {"ip", [&ip](const std::vector<std::string>& args) {
                         ip = args.at(1);
                     }},
-                    {"bg",   [&groups, &view, &audioSystem, &ip](const std::vector<std::string>& args) {
+                    {"bg",   [&groups, &view, &audioSystem, &ip, &prevPort](const std::vector<std::string>& args) {
                         int index = boost::lexical_cast<int>(args.at(1));
-                        unsigned short port = boost::lexical_cast<unsigned short>(args.at(2));
+                        unsigned short port = prevPort = boost::lexical_cast<unsigned short>(args.at(2));
                         auto device = audioSystem->getValidDevices().at(index);
                         auto group = std::make_shared<MicSideGroup>(
-                            device->name(),
+                            device->name() + " : " + boost::lexical_cast<std::string>(port),
                             std::move(audioSystem->createInputStream(device)),
                             port,
                             ip
@@ -282,11 +285,26 @@ int main(int argc, char **argv)
                         view->addGroup(group);
                         groups.push_back(group);
                     }},
+                    {"bgp", [&prevPort](const std::vector<std::string>& args) {
+                        std::vector<std::string> newArgs(args);
+                        newArgs.push_back(boost::lexical_cast<std::string>(++prevPort));
+                        procs.at("bg")(newArgs);
+                    }},
+                    {"sync", [&groups](const std::vector<std::string>& args) {
+                            for(auto& g : groups)   g->stop();
+                            for(auto& g : groups)   g->start();
+                    }}
                 };
                 std::vector<std::string> args;
                 boost::split(args, input, boost::is_space());
                 if(args.front() == "quit")  break;
-                procs.at(args.front())(args);
+
+                auto it = procs.find(args.front());
+                if(it == procs.end()){
+                    std::cout << "NOT FOUND" << std::endl;
+                    continue;
+                }
+                it->second(args); 
             }
             catch(std::exception& ex){
                 ZARU_CHECK(ex.what());

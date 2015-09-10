@@ -107,7 +107,7 @@ std::unique_ptr<AudioStream> PAAudioSystem::createInputStream(const AudioDeviceP
     inputParam.device = dev->getIndex();
     inputParam.channelCount = 1;
     inputParam.sampleFormat = paFloat32;
-    inputParam.suggestedLatency = dev->getInfo().defaultHighInputLatency;
+    inputParam.suggestedLatency = dev->getInfo().defaultLowInputLatency;
     inputParam.hostApiSpecificStreamInfo = NULL;
 
     PaStream *stream = NULL;

@@ -170,12 +170,19 @@ int main(int argc, char **argv)
                             group->start();
                             view->addGroup(group);
                             groups.push_back(group);
-                        }},
+                        }}
                     };
                     std::vector<std::string> args;
                     boost::split(args, input, boost::is_space());
                     if(args.front() == "quit")  break;
-                    procs.at(args.front())(args);
+
+                    auto it = procs.find(args.front());
+                    if(it == procs.end()){
+                        std::cout << "NOT FOUND" << std::endl;
+                        continue;
+                    }
+                    it->second(args); 
+
                 }
                 catch(std::exception& ex){
                     ZARU_CHECK(ex.what());
