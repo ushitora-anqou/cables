@@ -30,5 +30,9 @@ inline double divd(int n0, int n1)
     return static_cast<double>(n0) / n1;
 }
 
+inline double sinc(double x)
+{
+    return x == 0 ? 1.0 : std::sin(x) / x;
+}
 
 #endif

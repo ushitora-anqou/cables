@@ -1,32 +1,19 @@
-#include "portaudio.hpp"
+#include "pitchshifter.hpp"
+#include "wavefile.hpp"
+#include "stopwatch.hpp"
 #include <iostream>
-#include <string>
 
 int main()
 {
-    std::string input;
+    WaveInFile infile("in.wav");
+    WaveOutFile outfile("out.wav");
+    PitchShifter::Config config;
+    config.pitch = 0.66;
+    config.templateMS = 0.01;
+    config.pminMS = 0.005;
+    config.pmaxMS = 0.02;
+    PitchShifter shifter(config);
 
-    Pa_Initialize();
-    while(std::getline(std::cin, input)){
-        int count = Pa_GetDeviceCount();
-        std::cout << count << std::endl;
-        for(int i = 0;i < count;i++){
-            auto info = Pa_GetDeviceInfo(i);
-            std::cout << info->name << std::endl;
-        }    
-        if(input == "quit") break;
-    }
-    Pa_Terminate();
-
-    while(std::getline(std::cin, input)){
-        Pa_Initialize();
-        int count = Pa_GetDeviceCount();
-        std::cout << count << std::endl;
-        for(int i = 0;i < count;i++){
-            auto info = Pa_GetDeviceInfo(i);
-            std::cout << info->name << std::endl;
-        }    
-        Pa_Terminate();
-    }
-
+    for(int i = 0;i < 1000;i++)
+        outfile.write(shifter.proc(infile.read()));
 }
