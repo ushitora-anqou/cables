@@ -10,7 +10,7 @@ class PCMWave
 public:
     static const int
         SAMPLE_RATE = 44100,
-        BUFFER_SIZE = SAMPLE_RATE * 0.1,
+        BUFFER_SIZE = 8192,
         CHANNEL_COUNT = 2,
         BIT_COUNT = 16,
         BYTE_PER_SEC = SAMPLE_RATE * CHANNEL_COUNT * BIT_COUNT / 8,
@@ -18,10 +18,10 @@ public:
 
     struct Sample
     {
-        float left, right;
+        double left, right;
 
         Sample(){}
-        Sample(float l, float r)
+        Sample(double l, double r)
             : left(l), right(r)
         {}
 

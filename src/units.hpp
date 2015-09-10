@@ -98,4 +98,17 @@ public:
 	void inputImpl(const PCMWave& wave);
 };
 
+class NoiseGateFilter : public Unit
+{
+private:
+    double threshold_;
+
+public:
+    NoiseGateFilter(double threshold)
+        : threshold_(threshold)
+    {}
+
+    void inputImpl(const PCMWave& src);
+};
+
 #endif

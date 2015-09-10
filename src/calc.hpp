@@ -35,4 +35,17 @@ inline double sinc(double x)
     return x == 0 ? 1.0 : std::sin(x) / x;
 }
 
+template<class T>
+bool isIn(const T& lhs, const T& src, const T& rhs)
+{
+    return lhs < src && src < rhs;
+}
+
+template<class T>
+bool isInEq(const T& lhs, const T& src, const T& rhs)
+{
+    return lhs <= src && src <= rhs;
+}
+
+
 #endif

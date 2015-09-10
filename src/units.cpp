@@ -73,3 +73,18 @@ void PrintInUnit::inputImpl(const PCMWave& wave)
     groupInfo_.updateWaveLevel(*wave.begin());
 }
 
+///
+
+void NoiseGateFilter::inputImpl(const PCMWave& src)
+{
+    const double t = threshold_;
+    PCMWave next;
+    std::transform(
+        src.begin(), src.end(), next.begin(),
+        [t](const PCMWave::Sample& s) {
+            return PCMWave::Sample(isInEq(-t, s.left,  t) ? 0 : s.left,
+                                   isInEq(-t, s.right, t) ? 0 : s.right);
+        }
+    );
+    send(next);
+}

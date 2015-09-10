@@ -6,15 +6,16 @@ MAINS_DIR=mains
 CPPS=$(notdir $(wildcard $(SRC_DIR)/*.cpp))	# ソースの複数階層に対応していない
 OBJS=$(addprefix $(MED_DIR)/, $(CPPS:.cpp=.o))
 DEPS=$(OBJS:.o=.d)
+LIBPATH=D:\Zaru\Desktop\MinGW
 INCLUDE=\
-	-I../../libraries\portaudio\include \
-	-I../../libraries\boost_1_58_0\include -D_WIN32_WINNT=0x0501 -DWINVER=0x0501 \
-	-I../../libraries\freeglut\include
+	-I$(LIBPATH)/libraries\portaudio\include \
+	-I$(LIBPATH)/libraries\boost_1_58_0\include -D_WIN32_WINNT=0x0501 -DWINVER=0x0501 \
+	-I$(LIBPATH)/libraries\freeglut\include
 LIB=\
 	-static-libgcc -static-libstdc++ \
-	-L../../libraries\portaudio\lib -lportaudio -lportaudiocpp \
-	-L../../libraries\boost_1_58_0\lib -lboost_thread-mgw48-mt-1_58 -lboost_system-mgw48-mt-1_58 -lboost_regex-mgw48-mt-1_58 -lboost_serialization-mgw48-mt-1_58 -lwsock32 -lWS2_32 \
-	-L../../libraries\freeglut\lib -lfreeglut -lfreeglut_static -lglu32 -lopengl32
+	-L$(LIBPATH)/libraries\portaudio\lib -lportaudio -lportaudiocpp \
+	-L$(LIBPATH)/libraries\boost_1_58_0\lib -lboost_thread-mgw48-mt-1_58 -lboost_system-mgw48-mt-1_58 -lboost_regex-mgw48-mt-1_58 -lboost_serialization-mgw48-mt-1_58 -lwsock32 -lWS2_32 \
+	-L$(LIBPATH)/libraries\freeglut\lib -lfreeglut -lfreeglut_static -lglu32 -lopengl32
 FLAGS=-g -O0 -std=c++11
 #FLAGS=-O3 -std=c++11
 

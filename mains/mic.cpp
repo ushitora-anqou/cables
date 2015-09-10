@@ -65,6 +65,7 @@ private:
 
     std::shared_ptr<MicOutUnit> mic_;
     std::shared_ptr<VolumeFilter> micVolume_;
+    std::shared_ptr<NoiseGateFilter> micNoiseGate_;
 
     std::shared_ptr<SinFakeOutUnit> sin_;
     std::shared_ptr<VolumeFilter> sinVolume_;
@@ -81,6 +82,7 @@ public:
     {
         mic_ = std::make_shared<MicOutUnit>(std::move(micStream));
         micVolume_ = std::make_shared<VolumeFilter>();
+        micNoiseGate_ = std::make_shared<NoiseGateFilter>(0.01);    // -40db
 
         sin_ = std::make_shared<SinFakeOutUnit>(1000);
         sin_->setMute(true);
@@ -99,7 +101,8 @@ public:
         print_ = std::make_shared<PrintInUnit>(*this);
         send_ = std::make_shared<AsioNetworkSendInUnit>(port, ipAddr);
 
-        connect({mic_}, {micVolume_, sin_});
+        connect({mic_}, {micNoiseGate_, sin_});
+        connect({micNoiseGate_}, {micVolume_});
         connect({micVolume_}, {through_, reverb_});
         connect({sin_}, {sinVolume_});
         connect({sinVolume_}, {through_, reverb_});
