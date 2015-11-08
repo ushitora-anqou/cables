@@ -5,44 +5,54 @@
 #include "asio_network.hpp"
 #include "daisharin.hpp"
 #include "error.hpp"
+#include "fakefilter.hpp"
 #include <boost/algorithm/string.hpp>
 #include <iostream>
 #include <unordered_map>
 
-class ReverbFilter : public Unit
+class ReverbFakeFilter : public FakeFilter
 {
 private:
-    Daisharin dai_;
+    const Daisharin::Config config_;
+    std::unique_ptr<Daisharin> dai_;
 
 public:
-    ReverbFilter(const Daisharin::Config& config)
-        : dai_(config)
+    ReverbFakeFilter(const Daisharin::Config& config)
+        : config_(config), dai_(make_unique<Daisharin>(config))
     {}
 
-    void inputImpl(const PCMWave& wave)
+    void reset() override
     {
-        send(dai_.update(wave));
+        dai_ = make_unique<Daisharin>(config_);
+    }
+
+    PCMWave proc(const PCMWave& src) override
+    {
+        return std::move(dai_->update(src));
     }
 };
 
-class SinFakeOutUnit : public Unit
+class SinFakeOutFilter : public FakeFilter
 {
 private:
     std::vector<double> sinTable_;
     int p_;
+    double v_;
 
 public:
-    SinFakeOutUnit(int f)
-        : sinTable_(PCMWave::SAMPLE_RATE / f, 0), p_(0)
+    SinFakeOutFilter(int f, double v)
+        : sinTable_(PCMWave::SAMPLE_RATE / f, 0), p_(0), v_(v)
     {
         int t = sinTable_.size();
         for(int i = 0;i < t;i++){
-            sinTable_.at(i) = static_cast<double>(::sin(2 * 3.14159265358979323846264338 * i / t));
+            sinTable_.at(i) = static_cast<double>(::sin(2 * 3.14159265358979323846264338 * i / t) * v);
         }
     }
-    ~SinFakeOutUnit(){}
+    ~SinFakeOutFilter(){}
 
-    void inputImpl(const PCMWave& wave)
+    void reset() override {}
+
+    PCMWave proc(const PCMWave&) override
     {
         auto& tbl = sinTable_;
         PCMWave ret;
@@ -51,7 +61,7 @@ public:
             s.right = tbl.at(p_);
             p_ = (p_ + 1) % tbl.size();
         }
-        send(ret);
+        return std::move(ret);
     }
 };
 
@@ -60,18 +70,19 @@ class MicView;
 class MicSideGroup : public GroupBase
 {
     friend class MicView;
+
+    enum {
+        INDEX_THROUGH = -1,
+        INDEX_SIN = 0,
+        INDEX_REVERB = 1
+    };
 private:
     std::string name_;
 
     std::shared_ptr<MicOutUnit> mic_;
     std::shared_ptr<VolumeFilter> micVolume_;
-    std::shared_ptr<NoiseGateFilter> micNoiseGate_;
 
-    std::shared_ptr<SinFakeOutUnit> sin_;
-    std::shared_ptr<VolumeFilter> sinVolume_;
-
-    std::shared_ptr<ThroughFilter> through_;
-    std::shared_ptr<ReverbFilter> reverb_;
+    std::shared_ptr<FakeFilterSwitchUnit> filters_;    // sin, reverb
 
     std::shared_ptr<PrintInUnit> print_;
     std::shared_ptr<AsioNetworkSendInUnit> send_;
@@ -82,36 +93,29 @@ public:
     {
         mic_ = std::make_shared<MicOutUnit>(std::move(micStream));
         micVolume_ = std::make_shared<VolumeFilter>();
-        micNoiseGate_ = std::make_shared<NoiseGateFilter>(0.01);    // -40db
 
-        sin_ = std::make_shared<SinFakeOutUnit>(1000);
-        sin_->setMute(true);
-        sinVolume_ = std::make_shared<VolumeFilter>(5);
-
-        through_ = std::make_shared<ThroughFilter>();
         Daisharin::Config config;
         config.delayBufferSize = 600 * PCMWave::SAMPLE_RATE / 1000;
         config.delayPointsSize = 50;
         config.reverbTime = 2000;
         config.tremoloSpeed = 6;
         config.lpfHighDump = 0.5;
-        reverb_ = std::make_shared<ReverbFilter>(config);
-        reverb_->setMute(true);
+        filters_ = std::make_shared<FakeFilterSwitchUnit>(std::vector<FakeFilterPtr>({
+            std::make_shared<SinFakeOutFilter>(1000, 0.05),
+            std::make_shared<ReverbFakeFilter>(config)
+        }));
 
         print_ = std::make_shared<PrintInUnit>(*this);
         send_ = std::make_shared<AsioNetworkSendInUnit>(port, ipAddr);
 
-        connect({mic_}, {micVolume_, sin_});
-        //connect({micNoiseGate_}, {micVolume_});
-        connect({micVolume_}, {through_, reverb_});
-        connect({sin_}, {sinVolume_});
-        connect({sinVolume_}, {through_, reverb_});
-        connect({through_, reverb_}, {print_, send_});
+        connect({mic_}, {micVolume_});
+        connect({micVolume_}, {filters_});
+        connect({filters_}, {print_, send_});
     }
 
     bool isAlive() override
     {
-        return sin_->canSendContent() || mic_->canSendContent();
+        return mic_->canSendContent();
     }
 
     std::string createName() override
@@ -122,8 +126,7 @@ public:
     std::vector<std::string> createOptionalInfo() override
     {
         return std::vector<std::string>({
-            toString(micVolume_->getVolume()),
-            toString(sinVolume_->getVolume())
+            toString(micVolume_->getVolume())
         });
     }
 
@@ -131,11 +134,7 @@ public:
     {
         mic_->start();
         micVolume_->start();
-        micNoiseGate_->start();
-        sin_->start();
-        sinVolume_->start();
-        through_->start();
-        reverb_->start();
+        filters_->start();
         print_->start();
         send_->start();
     }
@@ -144,11 +143,7 @@ public:
     {
         mic_->stop();
         micVolume_->stop();
-        micNoiseGate_->stop();
-        sin_->stop();
-        sinVolume_->stop();
-        through_->stop();
-        reverb_->stop();
+        filters_->stop();
         print_->stop();
         send_->stop();
     }
@@ -167,16 +162,14 @@ protected:
         switch(key)
         {
         case 'p':   // trigger-begin
-            for(auto& g : groups){
-                g->mic_->setMute(true);
-                g->sin_->setMute(false);
-            }
+            for(auto& g : groups)
+                if(!g->mic_->isMute())
+                    g->filters_->change(MicSideGroup::INDEX_SIN);
             break;
         case 'e':   // trigger-begin
-            for(auto& g : groups){
-                g->through_->setMute(true);
-                g->reverb_->setMute(false);
-            }
+            for(auto& g : groups)
+                if(!g->mic_->isMute())
+                    g->filters_->change(MicSideGroup::INDEX_REVERB);
             break;
         }
     }
@@ -186,12 +179,6 @@ protected:
         auto& group = groupInfo;
         switch(key)
         {
-        case 'i':
-            group->sinVolume_->addVolume(5);
-            break;
-        case 'k':
-            group->sinVolume_->addVolume(-5);
-            break;
         case 'f':
             group->send_->stop();
             group->send_->start();
@@ -204,16 +191,10 @@ protected:
         switch(key)
         {
         case 'p':   // trigger-end
-            for(auto& g : groups){
-                g->sin_->setMute(true);
-                g->mic_->setMute(false);
-            }
-            break;
         case 'e':   // trigger-end
-            for(auto& g : groups){
-                g->reverb_->setMute(true);
-                g->through_->setMute(false);
-            }
+            for(auto& g : groups)
+                g->filters_->change(MicSideGroup::INDEX_THROUGH);
+            break;
         }
     }
 
@@ -222,8 +203,13 @@ protected:
         int index = calcIndexFromXY(x, y);
         if(index >= groups.size())  return;
         auto g = groups.at(index);
-        g->mic_->setMute(g->mic_->isMute() ? false : true);
-        g->sin_->setMute(true);
+        if(g->mic_->isMute()){
+            g->mic_->setMute(false);
+        }
+        else{
+            g->mic_->setMute(true);
+            g->filters_->change(MicSideGroup::INDEX_THROUGH);
+        }
     }
 
     void wheelUp(const std::vector<std::shared_ptr<MicSideGroup>>& groups, int x, int y)

@@ -158,10 +158,11 @@ int main(int argc, char **argv)
         std::vector<std::shared_ptr<MixerSideGroup>> groups;
         boost::thread inputThread([&viewSystem, &audioSystem, &view, &masterVolume, &groups]() {
             std::string input;
+            int prevPort = 10000;
             while(std::getline(std::cin, input)){
                 try{
                     const static std::unordered_map<std::string, boost::function<void(const std::vector<std::string>&)>> procs = {
-                        {"bg",   [&groups, &view, &masterVolume](const std::vector<std::string>& args) {
+                        {"bg", [&groups, &view, &masterVolume](const std::vector<std::string>& args) {
                             unsigned short port = boost::lexical_cast<unsigned short>(args.at(1));
                             auto group = std::make_shared<MixerSideGroup>(
                                 port,
@@ -170,6 +171,15 @@ int main(int argc, char **argv)
                             group->start();
                             view->addGroup(group);
                             groups.push_back(group);
+                        }},
+                        {"bgp", [&prevPort](const std::vector<std::string>& args) {
+                            std::vector<std::string> newArgs(args);
+                            newArgs.push_back(boost::lexical_cast<std::string>(++prevPort));
+                            procs.at("bg")(newArgs);
+                        }},
+                        {"sync", [&groups](const std::vector<std::string>& args) {
+                            for(auto& g : groups)   g->stop();
+                            for(auto& g : groups)   g->start();
                         }}
                     };
                     std::vector<std::string> args;

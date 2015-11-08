@@ -103,6 +103,11 @@ void Connection::asyncWrite(const T& t, const AsyncHandler<T>& orgHandler)
     }
     catch(boost::system::error_code &ex){
         socket_.get_io_service().post(boost::bind(orgHandler, ex, boost::none));
+        return;
+    }
+    catch(std::exception& ex){
+        socket_.get_io_service().post(boost::bind(orgHandler, boost::system::error_code(), boost::none));
+        return;
     }
 
     // copy data
